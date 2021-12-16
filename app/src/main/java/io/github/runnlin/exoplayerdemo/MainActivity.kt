@@ -3,10 +3,8 @@ package io.github.runnlin.exoplayerdemo
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.Window
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -25,22 +23,22 @@ import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import java.io.File
 
-private val rootPath = "/storage/usb0/"
+private const val rootPath = "/storage/usb0/"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
     private lateinit var _recyclerView: RecyclerView
     private lateinit var _floatBtn: FloatingActionButton
-    private lateinit var playerView: PlayerView
-    private lateinit var player: ExoPlayer
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var _playerView: PlayerView
+    private lateinit var _player: ExoPlayer
+    private lateinit var _binding: ActivityMainBinding
 
 
     private val mainViewModel: MainViewModel by viewModels {
         MediaViewModelFactory((application as ExpPlayerDemoApplication).repository)
     }
 
-    val requestPermissionLauncher =
+    private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             if (it) {
                 playMedia()
@@ -52,16 +50,16 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        _binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(_binding.root)
         initView()
         scan()
     }
 
-    fun initView() {
-        _recyclerView = binding.rvPlaylist
-        playerView = binding.videoView
-        _floatBtn = binding.btnFloatbtn
+    private fun initView() {
+        _recyclerView = _binding.rvPlaylist
+        _playerView = _binding.videoView
+        _floatBtn = _binding.btnFloatbtn
         val mediaListAdapter = MediaListAdapter()
         mediaListAdapter.addItemClickListener(this)
         _recyclerView.apply {
@@ -93,9 +91,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             }
         })
 
-        player = ExoPlayer.Builder(this).build().apply {
+        _player = ExoPlayer.Builder(this).build().apply {
             this.playWhenReady = true
-            playerView.player = this
+            _playerView.player = this
             addListener(this@MainActivity)
         }
 
@@ -111,7 +109,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         Toast.makeText(this, "Player ERROR: ${error.errorCodeName}", Toast.LENGTH_LONG).show()
     }
 
-    fun scan() {
+    private fun scan() {
         val scanFile = ScanFileUtil(rootPath)
         scanFile.setCallBackFilter(
             ScanFileUtil.FileFilterBuilder().apply {
@@ -128,7 +126,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             }
 
             override fun scanComplete(timeConsuming: Long) {
-                Toast.makeText(this@MainActivity, "Scan Done, consumed: $timeConsuming", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    "Scan Done, consumed: $timeConsuming",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
 
             override fun scanningCallBack(file: File) {
@@ -170,8 +172,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private fun playMedia() {
         Log.i("MainActivity: ", "start play: ${mainViewModel.currentMediaInfo.path}")
         val mediaItem = MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
-        player.setMediaItem(mediaItem)
-        player.prepare()
+        _player.setMediaItem(mediaItem)
+        _player.prepare()
     }
 
 }
