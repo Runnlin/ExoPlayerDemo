@@ -5,11 +5,15 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -56,6 +60,15 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         scan()
     }
 
+    override fun onResume() {
+        super.onResume()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, _binding.root).let { controller ->
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
     private fun initView() {
         _recyclerView = _binding.rvPlaylist
         _playerView = _binding.videoView
@@ -79,12 +92,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 mediaListAdapter.submitList(
                     listOf(
                         MediaInfo(
-                            "NetMediaFileTest",
-                            "extension000",
-                            30,
-                            "Network Media Test",
-                            30,
-                            "https://v-cdn.zjol.com.cn/276982.mp4"
+                            uuid = "netTest001",
+                            title = "Network Media Test",
+                            path = "https://v-cdn.zjol.com.cn/276982.mp4"
                         )
                     ) + medias
                 )
