@@ -1,6 +1,7 @@
 package io.github.runnlin.exoplayerdemo
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -36,7 +37,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private lateinit var _playerView: PlayerView
     private lateinit var _player: ExoPlayer
     private lateinit var _binding: ActivityMainBinding
-
 
     private val mainViewModel: MainViewModel by viewModels {
         MediaViewModelFactory((application as ExpPlayerDemoApplication).repository)
@@ -93,6 +93,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     listOf(
                         MediaInfo(
                             uuid = "netTest001",
+                            type = "mp4",
                             title = "Network Media Test",
                             path = "https://v-cdn.zjol.com.cn/276982.mp4"
                         )
@@ -161,7 +162,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         )
     }
 
-    override fun onItemClickListener(position: Int, mediaInfo: MediaInfo) {
+    override fun onPlayListener(mediaInfo: MediaInfo) {
         mainViewModel.currentMediaInfo = mediaInfo
 
         when (PackageManager.PERMISSION_GRANTED) {
@@ -177,6 +178,12 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 )
             }
         }
+    }
+
+    override fun onInfoListener(infoString: String) {
+        val intent = Intent(this, PopUpWindow::class.java)
+        intent.putExtra("info", infoString)
+        startActivity(intent)
     }
 
     private fun playMedia() {

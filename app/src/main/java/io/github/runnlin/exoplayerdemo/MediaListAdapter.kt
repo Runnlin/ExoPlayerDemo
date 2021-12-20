@@ -1,36 +1,44 @@
 package io.github.runnlin.exoplayerdemo
 
-import android.graphics.Color
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
+import java.util.*
+import kotlin.collections.ArrayList
 
 
-class MediaListAdapter : ListAdapter<MediaInfo, MediaListAdapter.MediaViewHolder>(MediaComparator()) {
+class MediaListAdapter :
+    ListAdapter<MediaInfo, MediaListAdapter.MediaViewHolder>(MediaComparator()) {
 
-    var listeners = ArrayList<onItemClickListener>()
+    private var listeners = ArrayList<onItemClickListener>()
 
     class MediaViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val mediaInfoName: TextView = itemView.findViewById(R.id.tv_item_name)
-//        private val mediaInfoIcon: ImageView = itemView.findViewById(R.id.iv_icon)
+        private val mediaInfoIcon: ImageView = itemView.findViewById(R.id.iv_icon)
+        private val mediaInfo: LinearLayout = itemView.findViewById(R.id.ll_info)
 
         fun bind(text: String?, type: String?) {
             mediaInfoName.text = "$text"
-//            when (type) {
-//                "mp4","avi","flv" -> {
-//                    mediaInfoIcon.setColorFilter(Color.RED)
-//                }
-//                else -> {
-//                    mediaInfoIcon.setColorFilter(Color.BLUE)
-//                }
-//            }
+            if (isVideo(type)) {
+                mediaInfoIcon.setImageResource(R.drawable.ic_video_library)
+            } else {
+                mediaInfoIcon.setImageResource(R.drawable.ic_audiotrack)
+            }
+        }
+
+        fun isVideo(type: String?): Boolean {
+            when (type?.lowercase(Locale.getDefault())) {
+                "mp4", "avi", "flv", "3gp", "mkv", "wmv" -> return true
+            }
+            return false
         }
 
         companion object {
@@ -53,9 +61,9 @@ class MediaListAdapter : ListAdapter<MediaInfo, MediaListAdapter.MediaViewHolder
     }
 
 
-
     interface onItemClickListener {
-        fun onItemClickListener(position: Int, mediaInfo: MediaInfo)
+        fun onPlayListener(mediaInfo: MediaInfo)
+        fun onInfoListener(infoString: String)
     }
 
     fun addItemClickListener(listener: onItemClickListener) {
@@ -72,8 +80,10 @@ class MediaListAdapter : ListAdapter<MediaInfo, MediaListAdapter.MediaViewHolder
         holder.itemView.setOnClickListener {
             Log.d("RECYCLER", "click: $position, ${current.title}")
             if (listeners.size > 0) {
-                for (listener in listeners)
-                    listener.onItemClickListener(position, current)
+                for (listener in listeners) {
+                    listener.onPlayListener(current)
+//                    listener.onInfoListener(current.path)
+                }
             }
         }
     }
