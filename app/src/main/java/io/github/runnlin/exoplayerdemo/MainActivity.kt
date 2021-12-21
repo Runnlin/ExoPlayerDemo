@@ -3,15 +3,10 @@ package io.github.runnlin.exoplayerdemo
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.view.View
-import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -27,6 +22,7 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
@@ -36,15 +32,12 @@ import java.io.File
 private const val rootPath = "/storage/usb0/"
 //private const val rootPath = "/data/"
 
-class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener {
+class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
     private lateinit var _recyclerView: RecyclerView
     private lateinit var _floatBtn: FloatingActionButton
-    private lateinit var _surface: SurfaceView
-    private lateinit var _mediaPlayer: MediaPlayer
-//    private lateinit var _btnStart: Button
-//    private lateinit var _btnStop: Button
-//    private lateinit var _btnPause: Button
+    private lateinit var _playerView: PlayerView
+    private lateinit var _player: ExoPlayer
     private lateinit var _binding: ActivityMainBinding
 
     private val mainViewModel: MainViewModel by viewModels {
@@ -66,7 +59,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener {
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(_binding.root)
         initView()
-//        scan()
+        scan()
     }
 
     override fun onResume() {
@@ -80,10 +73,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener {
 
     private fun initView() {
         _recyclerView = _binding.rvPlaylist
-//        _btnStart = _binding.btnStart
-//        _btnPause = _binding.btnPause
-//        _btnStop = _binding.btnStop
-
+        _playerView = _binding.videoView
         _floatBtn = _binding.btnFloatbtn
         val mediaListAdapter = MediaListAdapter()
         mediaListAdapter.addItemClickListener(this)
@@ -114,28 +104,24 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener {
             }
         })
 
-        _surface = _binding.surfaceView.apply {
-            this.holder.setKeepScreenOn(true)
+        _player = ExoPlayer.Builder(this).build().apply {
+            playWhenReady = true
+            _playerView.player = this
+            addListener(this@MainActivity)
+            setAudioAttributes(AudioAttributes.DEFAULT, false)
+            trackSelector
         }
-        _mediaPlayer = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .build()
-            )
-//            setDataSource(applicationContext, Uri.parse("https://v-cdn.zjol.com.cn/276982.mp4"))
-//            prepare()
-//            start()
-        }
-
-        _surface.holder.setKeepScreenOn(true)
-
 
         _floatBtn.setOnClickListener {
             mainViewModel.deleteAll()
             scan()
         }
+    }
+
+    // Player Listener
+    override fun onPlayerError(error: PlaybackException) {
+        super.onPlayerError(error)
+        Toast.makeText(this, "Player ERROR: ${error.errorCodeName}", Toast.LENGTH_LONG).show()
     }
 
     private fun scan() {
@@ -206,10 +192,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener {
 
     private fun playMedia() {
         Log.i("MainActivity: ", "start play: ${mainViewModel.currentMediaInfo.path}")
-//        _mediaPlayer.setDataSource(this, Uri.parse(mainViewModel.currentMediaInfo.path))
-        _mediaPlayer.setDataSource(this, Uri.parse("/data/1.mp4"))
-        _mediaPlayer.prepare()
-        _mediaPlayer.start()
+        val mediaItem = MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
+//        val mediaItem = MediaItem.fromUri(Uri.parse("/data/1mute.h264.mp4"))
+        _player.setMediaItem(mediaItem)
+        _player.prepare()
     }
 
 }
