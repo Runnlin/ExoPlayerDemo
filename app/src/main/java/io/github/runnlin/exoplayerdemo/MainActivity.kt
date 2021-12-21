@@ -29,6 +29,7 @@ import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import java.io.File
 
 private const val rootPath = "/storage/usb0/"
+//private const val rootPath = "/data/"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
@@ -47,7 +48,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             if (it) {
                 playMedia()
             } else {
-                Toast.makeText(this@MainActivity, "NOT Permission, NOT Play", Toast.LENGTH_SHORT)
+                Toast.makeText(this@MainActivity, "NO Permission, NO Play", Toast.LENGTH_SHORT)
                     .show()
             }
         }
@@ -189,6 +190,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private fun playMedia() {
         Log.i("MainActivity: ", "start play: ${mainViewModel.currentMediaInfo.path}")
         val mediaItem = MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
+//        val mediaItem = MediaItem.fromUri(Uri.parse("/data/1.mp4"))
         _player.setMediaItem(mediaItem)
         _player.prepare()
     }
