@@ -3,9 +3,11 @@ package io.github.runnlin.exoplayerdemo
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.SurfaceView
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,8 +37,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 
     private lateinit var _recyclerView: RecyclerView
     private lateinit var _floatBtn: FloatingActionButton
-    private lateinit var _playerView: PlayerView
-    private lateinit var _player: ExoPlayer
+//    private lateinit var _playerView: PlayerView
+//    private lateinit var _player: ExoPlayer
+    private lateinit var _surface: SurfaceView
+    private lateinit var _mediaPlayer: MediaPlayer
     private lateinit var _binding: ActivityMainBinding
 
     private val mainViewModel: MainViewModel by viewModels {
