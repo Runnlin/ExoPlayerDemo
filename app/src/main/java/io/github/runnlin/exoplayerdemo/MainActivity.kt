@@ -206,9 +206,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener {
 
     private fun playMedia() {
         Log.i("MainActivity: ", "start play: ${mainViewModel.currentMediaInfo.path}")
-//        val mediaItem = MediaItem.fromUri()
-//        val mediaItem = MediaItem.fromUri(Uri.parse("/data/1.mp4"))
-        _mediaPlayer.setDataSource(this, Uri.parse(mainViewModel.currentMediaInfo.path))
+//        _mediaPlayer.setDataSource(this, Uri.parse(mainViewModel.currentMediaInfo.path))
+        _mediaPlayer.setDataSource(this, Uri.parse("/data/1.mp4"))
         _mediaPlayer.prepare()
         _mediaPlayer.start()
     }
