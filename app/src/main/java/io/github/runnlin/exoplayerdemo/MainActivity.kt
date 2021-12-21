@@ -22,6 +22,7 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
@@ -104,9 +105,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         })
 
         _player = ExoPlayer.Builder(this).build().apply {
-            this.playWhenReady = true
+            playWhenReady = true
             _playerView.player = this
             addListener(this@MainActivity)
+            setAudioAttributes(AudioAttributes.DEFAULT, false)
+            trackSelector
         }
 
         _floatBtn.setOnClickListener {
@@ -190,7 +193,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private fun playMedia() {
         Log.i("MainActivity: ", "start play: ${mainViewModel.currentMediaInfo.path}")
         val mediaItem = MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
-//        val mediaItem = MediaItem.fromUri(Uri.parse("/data/1.mp4"))
+//        val mediaItem = MediaItem.fromUri(Uri.parse("/data/1mute.h264.mp4"))
         _player.setMediaItem(mediaItem)
         _player.prepare()
     }
