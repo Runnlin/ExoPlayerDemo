@@ -1,5 +1,7 @@
 package io.github.runnlin.exoplayerdemo
 
+import android.annotation.SuppressLint
+import android.graphics.Color
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -24,13 +26,29 @@ class MediaListAdapter :
         private val mediaInfoName: TextView = itemView.findViewById(R.id.tv_item_name)
         private val mediaInfoIcon: ImageView = itemView.findViewById(R.id.iv_icon)
         private val mediaInfo: LinearLayout = itemView.findViewById(R.id.ll_info)
+        private val mediaCheckIcon: ImageView = itemView.findViewById(R.id.iv_info)
 
-        fun bind(text: String?, type: String?) {
+        @SuppressLint("ResourceAsColor")
+        fun bind(text: String?, type: String?, isCheck: Int) {
             mediaInfoName.text = "$text"
             if (isVideo(type)) {
                 mediaInfoIcon.setImageResource(R.drawable.ic_video_library)
             } else {
                 mediaInfoIcon.setImageResource(R.drawable.ic_audiotrack)
+            }
+            when (isCheck) {
+                0 -> {
+                    mediaInfo.setBackgroundColor(Color.GRAY)
+                    mediaCheckIcon.setImageResource(R.drawable.ic_check_ready)
+                }
+                1 -> {
+                    mediaInfo.setBackgroundColor(Color.GREEN)
+                    mediaCheckIcon.setImageResource(R.drawable.ic_check_ok)
+                }
+                2 -> {
+                    mediaInfo.setBackgroundColor(Color.RED)
+                    mediaCheckIcon.setImageResource(R.drawable.ic_check_no)
+                }
             }
         }
 
@@ -63,7 +81,6 @@ class MediaListAdapter :
 
     interface onItemClickListener {
         fun onPlayListener(mediaInfo: MediaInfo)
-        fun onInfoListener(infoString: String)
     }
 
     fun addItemClickListener(listener: onItemClickListener) {
@@ -76,13 +93,12 @@ class MediaListAdapter :
 
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
         val current = getItem(position)
-        holder.bind(current.title, current.type)
+        holder.bind(current.title, current.type, current.isAbility)
         holder.itemView.setOnClickListener {
             Log.d("RECYCLER", "click: $position, ${current.title}")
             if (listeners.size > 0) {
                 for (listener in listeners) {
                     listener.onPlayListener(current)
-//                    listener.onInfoListener(current.path)
                 }
             }
         }
