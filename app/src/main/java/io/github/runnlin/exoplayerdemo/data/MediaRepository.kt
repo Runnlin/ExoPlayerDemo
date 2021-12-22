@@ -12,6 +12,11 @@ class MediaRepository(private val mediaDAO: MediaDAO) {
     }
 
     @WorkerThread
+    suspend fun update(mediaInfo: MediaInfo) {
+        mediaDAO.updateFile(mediaInfo)
+    }
+
+    @WorkerThread
     suspend fun deleteAllFileInfo() {
         mediaDAO.deleteAllFileInfo()
     }

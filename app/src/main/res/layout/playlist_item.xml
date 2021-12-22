@@ -2,7 +2,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="horizontal">
 
     <LinearLayout
@@ -12,6 +11,7 @@
         <ImageView
             android:id="@+id/iv_icon"
             android:layout_gravity="center"
+            android:src="@drawable/ic_video_library"
             android:layout_width="34dp"
             android:layout_height="34dp"
             android:layout_margin="2dp"/>
@@ -31,15 +31,14 @@
         android:id="@+id/ll_info"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:background="@color/teal_700"
-        android:visibility="gone">
+        android:background="@color/teal_700">
         <ImageView
             android:id="@+id/iv_info"
             android:layout_width="38dp"
             android:layout_height="38dp"
             android:layout_margin="6dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_info" />
+            android:src="@drawable/ic_check_ready" />
     </LinearLayout>
 
 </LinearLayout>

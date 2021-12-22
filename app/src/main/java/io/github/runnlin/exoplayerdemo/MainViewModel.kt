@@ -23,6 +23,11 @@ class MainViewModel(private val repository: MediaRepository): ViewModel() {
         repository.insert(mediaInfo)
     }
 
+    fun update(mediaInfo: MediaInfo) = viewModelScope.launch {
+        Log.i(TAG, "update: ${mediaInfo.title}")
+        repository.update(mediaInfo)
+    }
+
     fun deleteAll() = viewModelScope.launch {
         Log.i(TAG, "deleteALL")
         repository.deleteAllFileInfo()

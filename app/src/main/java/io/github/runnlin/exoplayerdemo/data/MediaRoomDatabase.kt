@@ -8,7 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-@Database(entities = [MediaInfo::class], version = 1, exportSchema = false)
+@Database(entities = [MediaInfo::class], version = 3, exportSchema = false)
 abstract class MediaRoomDatabase : RoomDatabase() {
     abstract fun mediaDAO(): MediaDAO
     companion object {

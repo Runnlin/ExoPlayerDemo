@@ -18,4 +18,7 @@
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+    <style name="CustomDialog" parent="android:Theme.Dialog">
+        <item name="android:windowBackground">@drawable/info_dialog_bg</item>
+    </style>
 </resources>

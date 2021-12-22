@@ -10,10 +10,6 @@ import java.util.*
  * 扫描文件工具
  * Scan file tool
  *
- * @author Dboy
- * @作者： Dboy
- * @see  'https://github.com/Dboy233/ScanFIlesUtil'
- * @see 'targetSdkVersion'  targetSdkVersion <= 28 ; 设置你的gradle版本 / Set your gradle version
  * @sample {
  *    val scanFile = ScanFileUtil(ScanFileUtil.externalStorageDirectory)
  *
