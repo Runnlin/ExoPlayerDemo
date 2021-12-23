@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 @Database(entities = [MediaInfo::class], version = 3, exportSchema = false)
 abstract class MediaRoomDatabase : RoomDatabase() {
     abstract fun mediaDAO(): MediaDAO
+
     companion object {
         // 任何一个线程对它进行修改，都会让所有其他CPU高速缓存中的值过期，这样其他线程就必须去内存中重新获取最新的值
         @Volatile
@@ -38,6 +39,7 @@ abstract class MediaRoomDatabase : RoomDatabase() {
                 scope.launch {
                     // 刚创建时进行清空初始化
                     database.mediaDAO().deleteAllFileInfo()
+                    
                 }
             }
         }

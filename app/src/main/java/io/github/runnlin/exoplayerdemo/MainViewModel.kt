@@ -16,6 +16,7 @@ class MainViewModel(private val repository: MediaRepository): ViewModel() {
 
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
+    var currentPosition: Int = -1
     lateinit var currentMediaInfo: MediaInfo
 
     fun insert(mediaInfo: MediaInfo) = viewModelScope.launch {

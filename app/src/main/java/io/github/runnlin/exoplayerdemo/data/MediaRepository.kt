@@ -19,6 +19,14 @@ class MediaRepository(private val mediaDAO: MediaDAO) {
     @WorkerThread
     suspend fun deleteAllFileInfo() {
         mediaDAO.deleteAllFileInfo()
+//        insert(
+//            MediaInfo(
+//                uuid = "1",
+//                type = "mp4",
+//                title = "Network Media Test",
+//                path = "https://v-cdn.zjol.com.cn/277010.mp4"
+//            )
+//        )
     }
 
 }

@@ -29,14 +29,14 @@ class MediaListAdapter :
         private val mediaCheckIcon: ImageView = itemView.findViewById(R.id.iv_info)
 
         @SuppressLint("ResourceAsColor")
-        fun bind(text: String?, type: String?, isCheck: Int) {
-            mediaInfoName.text = "$text"
-            if (isVideo(type)) {
+        fun bind(current: MediaInfo) {
+            mediaInfoName.text = current.title
+            if (isVideo(current.type)) {
                 mediaInfoIcon.setImageResource(R.drawable.ic_video_library)
             } else {
                 mediaInfoIcon.setImageResource(R.drawable.ic_audiotrack)
             }
-            when (isCheck) {
+            when (current.isAbility) {
                 0 -> {
                     mediaInfo.setBackgroundColor(Color.GRAY)
                     mediaCheckIcon.setImageResource(R.drawable.ic_check_ready)
@@ -80,7 +80,7 @@ class MediaListAdapter :
 
 
     interface onItemClickListener {
-        fun onPlayListener(mediaInfo: MediaInfo)
+        fun onPlayListener(mediaInfo: MediaInfo, position: Int)
     }
 
     fun addItemClickListener(listener: onItemClickListener) {
@@ -93,12 +93,12 @@ class MediaListAdapter :
 
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
         val current = getItem(position)
-        holder.bind(current.title, current.type, current.isAbility)
+        holder.bind(current)
         holder.itemView.setOnClickListener {
             Log.d("RECYCLER", "click: $position, ${current.title}")
             if (listeners.size > 0) {
                 for (listener in listeners) {
-                    listener.onPlayListener(current)
+                    listener.onPlayListener(current, position)
                 }
             }
         }

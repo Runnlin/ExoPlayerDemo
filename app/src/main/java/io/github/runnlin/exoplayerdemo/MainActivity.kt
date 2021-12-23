@@ -21,23 +21,24 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.trackselection.TrackSelectionOverrides
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.common.collect.ImmutableSet
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
+import java.util.*
 
+private const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
     companion object {
-        private const val rootPath = "/storage/usb0/"
-
-        //private const val rootPath = "/data/"
-        private const val disableAudio = true
+        //                private const val rootPath = "/storage/usb0/"
+        private var rootPath = "/storage/self/primary/Movies"
+//        private const val disableAudio = false
     }
 
     private lateinit var _recyclerView: RecyclerView
@@ -46,24 +47,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private lateinit var _player: ExoPlayer
     private lateinit var _binding: ActivityMainBinding
     private lateinit var _usbReceiver: BroadcastReceiver
+    private lateinit var mediaListAdapter: MediaListAdapter
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
-    //    private var _infoDialog: CustomDialog? = null
+    private var _infoDialog: CustomDialog? = null
     private val _scanFile = ScanFileUtil(rootPath)
+
+    private var isAudioPlay = false
 
     private val mainViewModel: MainViewModel by viewModels {
         MediaViewModelFactory((application as ExpPlayerDemoApplication).repository)
     }
-
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-            if (it) {
-                startScan()
-            } else {
-                Toast.makeText(this@MainActivity, "NO Permission, NO Scan", Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,15 +67,18 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _usbReceiver = USBReceiver { usbDiskMountState ->
             when (usbDiskMountState) {
                 USBReceiver.USB_DISK_MOUNTED -> {
+                    rootPath = "/storage/usb0/"
                     scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
+                    rootPath = "/storage/self/primary/Movies"
                     stopScan()
                 }
             }
         }
         initReceiver()
         initView()
+        initScan()
     }
 
     override fun onResume() {
@@ -107,7 +104,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _playerView = _binding.videoView
         _floatBtn = _binding.floatBtn
         builderForInfoDialog = CustomDialog.Builder(this)
-        val mediaListAdapter = MediaListAdapter()
+        mediaListAdapter = MediaListAdapter()
         mediaListAdapter.addItemClickListener(this)
         _recyclerView.apply {
             adapter = mediaListAdapter
@@ -120,59 +117,106 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             )
         }
         mainViewModel.allMediaInfo.observe(this, { medias ->
-            Log.i("MainActivity: ", "files: $medias")
-
-            medias.let {
-                mediaListAdapter.submitList(
-                    listOf(
-                        MediaInfo(
-                            uuid = "netTest001",
-                            type = "mp4",
-                            title = "Network Media Test",
-                            path = "https://v-cdn.zjol.com.cn/276982.mp4"
-                        )
-                    ) + medias
-                )
-            }
+            Log.i(TAG, "files: $medias")
+            mediaListAdapter.submitList(medias)
         })
 
         _player = ExoPlayer.Builder(this).build().apply {
             playWhenReady = true
+            pauseAtEndOfMediaItems = true
             _playerView.player = this
-//            repeatMode = Player.REPEAT_MODE_ALL
+
             addListener(this@MainActivity)
-//            setAudioAttributes(AudioAttributes.DEFAULT, false)
         }
 
         _floatBtn.setOnClickListener {
-            mainViewModel.deleteAll()
+            Log.i(TAG, "setOnClickListener")
             scan()
         }
+    }
+
+    private fun initScan() {
+        _scanFile.setCallBackFilter(
+            ScanFileUtil.FileFilterBuilder().apply {
+                scanVideoFiles()
+                scanMusicFiles()
+            }.build()
+        )
+        _scanFile.setScanFileListener(object : ScanFileUtil.ScanFileListener {
+            override fun scanBegin() {
+                Log.i(TAG, "Scan Start")
+                _player.clearMediaItems()
+            }
+
+            override fun scanComplete(timeConsuming: Long) {
+                Log.i(TAG, "Scan Done, consumed: $timeConsuming")
+                Toast.makeText(
+                    this@MainActivity,
+                    "Scan Done, consumed: $timeConsuming",
+                    Toast.LENGTH_SHORT
+                ).show()
+                isAudioPlay = true
+                mainViewModel.currentPosition = 0
+
+                MainScope().launch {
+                    delay(1000)
+                    playMedia()
+                }
+            }
+
+            override fun scanningCallBack(file: File) {
+                mainViewModel.insert(packageMediaFile(file))
+            }
+        })
     }
 
     // Player Listener
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
-        Toast.makeText(this, "Player ERROR: ${error.errorCodeName}", Toast.LENGTH_LONG).show()
+        Log.i(TAG, "Player ERROR: ${error.errorCodeName}")
         mainViewModel.currentMediaInfo.isAbility = 2
-        mainViewModel.update(mainViewModel.currentMediaInfo)
-        _player.seekToNextMediaItem()
-    }
-
-    override fun onPlaybackStateChanged(playbackState: Int) {
-        super.onPlaybackStateChanged(playbackState)
-        when (playbackState) {
-            Player.STATE_ENDED -> Log.i("Main", "onPlaybackStateChanged: STATE_ENDED")
-            Player.STATE_IDLE -> Log.i("Main", "onPlaybackStateChanged: STATE_IDLE")
-            Player.STATE_BUFFERING -> Log.i("Main", "onPlaybackStateChanged: STATE_BUFFERING")
-            Player.STATE_READY -> Log.i("Main", "onPlaybackStateChanged: STATE_READY")
+        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+        if (isAudioPlay) {
+            MainScope().launch {
+                delay(1000)
+                mainViewModel.currentPosition++
+                playMedia()
+            }
         }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         super.onIsPlayingChanged(isPlaying)
-        Log.i("Main", "onIsPlayingChanged: ${if (isPlaying) "YES" else "NO"}")
+        //  *首次* isPlaying为true时说明正常播放
+        if (isPlaying) {
+            Log.i(
+                TAG,
+                "onIsPlayingChanged, position: ${mainViewModel.currentPosition}"
+            )
+            mainViewModel.currentMediaInfo.isAbility = 1
+            mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+
+            if (isAudioPlay) {
+                object : CountDownTimer(60 * 1000, 1000) {
+                    override fun onTick(millisUntilFinished: Long) {}
+                    override fun onFinish() {
+                        mainViewModel.currentPosition++
+                        playMedia()
+                    }
+                }.start()
+            }
+        }
     }
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            if (it) {
+                startScan()
+            } else {
+                Toast.makeText(this@MainActivity, "NO Permission, NO Scan", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
 
     private fun stopScan() {
         _scanFile.stop()
@@ -199,43 +243,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         if (_player.isPlaying) {
             _player.stop()
         }
-        _scanFile.setCallBackFilter(
-            ScanFileUtil.FileFilterBuilder().apply {
-                scanVideoFiles()
-                scanMusicFiles()
-            }.build()
-        )
-        _scanFile.setScanFileListener(object : ScanFileUtil.ScanFileListener {
-            override fun scanBegin() {
-                Toast.makeText(this@MainActivity, "Scan Started!", Toast.LENGTH_SHORT).show()
-                Log.i("Main", "Scan Start")
-            }
-
-            override fun scanComplete(timeConsuming: Long) {
-                Log.i("Main", "Scan Done, consumed: $timeConsuming")
-                Toast.makeText(
-                    this@MainActivity,
-                    "Scan Done, consumed: $timeConsuming",
-                    Toast.LENGTH_SHORT
-                ).show()
-                mainViewModel.allMediaInfo.value.let {
-                    if (it != null) {
-                        for (mediaInfo in it) {
-                            val playItem = mediaInfo.path?.let { it1 -> MediaItem.fromUri(it1) }
-                            if (playItem != null) {
-                                _player.addMediaItem(playItem)
-                            }
-                        }
-                    }
-                }
-//                _player.prepare()
-//                _recyclerView.isClickable = false
-            }
-
-            override fun scanningCallBack(file: File) {
-                mainViewModel.insert(packageMediaFile(file))
-            }
-        })
+        mainViewModel.deleteAll()
         _scanFile.startAsyncScan()
     }
 
@@ -247,44 +255,57 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             file.name,
             file.length().toInt(),
             file.path
-//            if (file.path.startsWith("/mnt/media_rw/usb0/")) rootPath + "video/mp4/" + file.name else file.path
         )
     }
 
-    override fun onPlayListener(mediaInfo: MediaInfo) {
+    override fun onPlayListener(mediaInfo: MediaInfo, position: Int) {
         mainViewModel.currentMediaInfo = mediaInfo
+        mainViewModel.currentPosition = position
+        isAudioPlay = false
         playMedia()
     }
 
     private fun playMedia() {
-        Log.i("MainActivity: ", "start play: ${mainViewModel.currentMediaInfo.path}")
-        if (mainViewModel.currentMediaInfo.path?.isNotEmpty() == true) {
 
-            val mediaItem = MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
-//        val mediaItem = MediaItem.fromUri(Uri.parse("/data/1mute.h264.mp4"))
-            _player.setMediaItem(mediaItem)
 
-            if (disableAudio)
-                _player.trackSelectionParameters.buildUpon()
-                    .setDisabledTrackTypes(ImmutableSet.of(C.TRACK_TYPE_AUDIO))
-                    .build()
-            _player.prepare()
-//            val mmr = MediaMetadataRetriever()
-//            mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-//            Log.i("mmr:",mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "NO TITLE")
-//            Log.i("mmr:",mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "NO ALBUM")
-//            showInfoDialog(
-//                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "NO TITLE",
-//                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "NO ALBUM"
-//            )
+        Log.i(TAG, "start play: ${mainViewModel.currentPosition}")
+        if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
+            _recyclerView.smoothScrollToPosition(0)
+            _player.stop()
+        } else if (mainViewModel.allMediaInfo.value?.get(mainViewModel.currentPosition) != null) {
+            mainViewModel.currentMediaInfo =
+                mainViewModel.allMediaInfo.value!![mainViewModel.currentPosition]
+            _recyclerView.scrollToPosition(mainViewModel.currentPosition)
+
+            Log.i(TAG, "start play: ${mainViewModel.currentMediaInfo.path}")
+            if (!mainViewModel.currentMediaInfo.path.isNullOrEmpty()) {
+
+                val mediaItem =
+                    MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
+                _player.setMediaItem(mediaItem)
+
+                _player.prepare()
+
+//            try {
+//                val mmr = MediaMetadataRetriever()
+//                mmr.setDataSource(mainViewModel.currentMediaInfo.path)
+//                Log.i(
+//                    TAG,
+//                    "mmr_TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+//                        ?: "NO TITLE")
+//                )
+//                Log.i(
+//                    TAG,
+//                    "mmr_ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+//                        ?: "NO ALBUM")
+//                )
+//            } catch (e: RuntimeException) {
+//                Log.e(TAG, e.stackTraceToString())
+//            }
+
+            }
 
         }
     }
-
-//    private fun showInfoDialog(title: String, message: String) {
-//        _infoDialog =
-//            builderForInfoDialog!!.setTitle(title).setMessage(message).createSingleButtonDialog()
-//        _infoDialog!!.show()
-//    }
 
 }
