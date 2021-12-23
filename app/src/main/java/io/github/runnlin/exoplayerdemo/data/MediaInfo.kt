@@ -12,5 +12,5 @@ data class MediaInfo(
     @ColumnInfo(name = "TITLE") var title: String,
     @ColumnInfo(name = "DURATION") val duration: Int = 10,
     @ColumnInfo(name = "PATH") val path: String?,
-    @ColumnInfo(name = "ABILITY") var isAbility: Int = 0// 0: ready for check,  1: can play, 2: can not play
+    @ColumnInfo(name = "ABILITY") var isAbility: Int = 0// 0: ready for check,  1: can play, 2: can not play,  3: Playing
 )

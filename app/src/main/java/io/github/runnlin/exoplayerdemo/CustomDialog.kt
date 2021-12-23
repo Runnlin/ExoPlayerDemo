@@ -73,7 +73,7 @@ class CustomDialog: Dialog {
          * @return
          */
         fun createSingleButtonDialog(): CustomDialog {
-            showSingleButton()
+//            showSingleButton()
             layout.findViewById<View>(R.id.singleBtn).setOnClickListener(singleButtonClickListener)
             //如果传入的按钮文字为空，则使用默认的“知道了”
             if (singleButtonText != null) {
