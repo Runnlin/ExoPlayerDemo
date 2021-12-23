@@ -7,7 +7,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,14 +31,10 @@ import java.io.File
 import java.util.*
 
 private const val TAG = "MainActivity"
+private const val DELAY_TIME = 3
+private var rootPath = "/storage/self/primary/Movies"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
-
-    companion object {
-        //                private const val rootPath = "/storage/usb0/"
-        private var rootPath = "/storage/self/primary/Movies"
-//        private const val disableAudio = false
-    }
 
     private lateinit var _recyclerView: RecyclerView
     private lateinit var _floatBtn: FloatingActionButton
@@ -50,10 +45,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private lateinit var mediaListAdapter: MediaListAdapter
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
-    private var _infoDialog: CustomDialog? = null
+    //    private var _infoDialog: CustomDialog? = null
     private val _scanFile = ScanFileUtil(rootPath)
 
-    private var isAudioPlay = false
+    private var isAutoPlay = false
 
     private val mainViewModel: MainViewModel by viewModels {
         MediaViewModelFactory((application as ExpPlayerDemoApplication).repository)
@@ -155,7 +150,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     "Scan Done, consumed: $timeConsuming",
                     Toast.LENGTH_SHORT
                 ).show()
-                isAudioPlay = true
+                isAutoPlay = true
                 mainViewModel.currentPosition = 0
 
                 MainScope().launch {
@@ -176,16 +171,19 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         Log.i(TAG, "Player ERROR: ${error.errorCodeName}")
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-        if (isAudioPlay) {
+        if (isAutoPlay) {
             MainScope().launch {
-                delay(1000)
-                mainViewModel.currentPosition++
-                playMedia()
+                delay(500)
+                playNextMedia()
             }
         }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        Log.i(
+            TAG,
+            "onIsPlayingChanged, isPlaying: $isPlaying"
+        )
         super.onIsPlayingChanged(isPlaying)
         //  *首次* isPlaying为true时说明正常播放
         if (isPlaying) {
@@ -196,14 +194,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             mainViewModel.currentMediaInfo.isAbility = 1
             mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
-            if (isAudioPlay) {
-                object : CountDownTimer(60 * 1000, 1000) {
-                    override fun onTick(millisUntilFinished: Long) {}
-                    override fun onFinish() {
-                        mainViewModel.currentPosition++
-                        playMedia()
-                    }
-                }.start()
+            if (isAutoPlay) {
+                MainScope().launch {
+                    delay(DELAY_TIME * 1000L)
+                    playNextMedia()
+                }
             }
         }
     }
@@ -261,17 +256,21 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     override fun onPlayListener(mediaInfo: MediaInfo, position: Int) {
         mainViewModel.currentMediaInfo = mediaInfo
         mainViewModel.currentPosition = position
-        isAudioPlay = false
+        isAutoPlay = false
+        playMedia()
+    }
+
+    private fun playNextMedia() {
+        mainViewModel.currentPosition++
         playMedia()
     }
 
     private fun playMedia() {
-
-
         Log.i(TAG, "start play: ${mainViewModel.currentPosition}")
+        if (_player.isPlaying)
+            _player.stop()
         if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
             _recyclerView.smoothScrollToPosition(0)
-            _player.stop()
         } else if (mainViewModel.allMediaInfo.value?.get(mainViewModel.currentPosition) != null) {
             mainViewModel.currentMediaInfo =
                 mainViewModel.allMediaInfo.value!![mainViewModel.currentPosition]
@@ -285,6 +284,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 _player.setMediaItem(mediaItem)
 
                 _player.prepare()
+                _player.play()
 
 //            try {
 //                val mmr = MediaMetadataRetriever()
