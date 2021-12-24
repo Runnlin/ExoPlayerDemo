@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.common.collect.ImmutableSet
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import kotlinx.coroutines.MainScope
@@ -29,9 +31,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
+
+import com.google.android.exoplayer2.C
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector.ParametersBuilder
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector.SelectionOverride
+
+import com.google.android.exoplayer2.trackselection.MappingTrackSelector
+import com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedTrackInfo
+import com.google.android.exoplayer2.util.Assertions
+
 
 private const val TAG = "MainActivity"
-private const val DELAY_TIME = 3
+private var DELAY_TIME = 3L
 private var rootPath = "/storage/self/primary/Movies"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
@@ -120,7 +132,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             playWhenReady = true
             pauseAtEndOfMediaItems = true
             _playerView.player = this
-
             addListener(this@MainActivity)
         }
 
@@ -169,6 +180,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
         Log.i(TAG, "Player ERROR: ${error.errorCodeName}")
+        mainViewModel.currentPlayingFine = false
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
         if (isAutoPlay) {
@@ -191,15 +203,25 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 TAG,
                 "onIsPlayingChanged, position: ${mainViewModel.currentPosition}"
             )
+            mainViewModel.currentPlayingFine = true
+            if (isAutoPlay) {
+                DELAY_TIME = if (_player.duration < DELAY_TIME) _player.duration else DELAY_TIME
+                object : CountDownTimer(DELAY_TIME * 1000L, 100L) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        if (!mainViewModel.currentPlayingFine)
+                            this.cancel()
+                    }
+
+                    override fun onFinish() {
+                        mainViewModel.currentMediaInfo.isAbility = 1
+                        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                        playNextMedia()
+                    }
+                }.start()
+            }
+        } else if (mainViewModel.currentPlayingFine) {
             mainViewModel.currentMediaInfo.isAbility = 1
             mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-
-            if (isAutoPlay) {
-                MainScope().launch {
-                    delay(DELAY_TIME * 1000L)
-                    playNextMedia()
-                }
-            }
         }
     }
 
@@ -285,6 +307,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 
                 _player.prepare()
                 _player.play()
+                mainViewModel.currentMediaInfo.isAbility = 3
+                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
 //            try {
 //                val mmr = MediaMetadataRetriever()

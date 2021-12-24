@@ -49,6 +49,9 @@ class MediaListAdapter :
                     mediaInfo.setBackgroundColor(Color.RED)
                     mediaCheckIcon.setImageResource(R.drawable.ic_check_no)
                 }
+                3 -> {
+                    mediaInfo.setBackgroundColor(Color.BLUE)
+                }
             }
         }
 
