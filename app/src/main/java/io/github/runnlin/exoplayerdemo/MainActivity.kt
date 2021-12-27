@@ -1,13 +1,15 @@
 package io.github.runnlin.exoplayerdemo
 
 import android.Manifest
-import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,8 +24,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.ui.PlayerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.common.collect.ImmutableSet
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import kotlinx.coroutines.MainScope
@@ -31,34 +31,32 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 
-import com.google.android.exoplayer2.C
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector.ParametersBuilder
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector.SelectionOverride
-
-import com.google.android.exoplayer2.trackselection.MappingTrackSelector
-import com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedTrackInfo
-import com.google.android.exoplayer2.util.Assertions
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import kotlin.collections.ArrayList
+import android.hardware.usb.UsbAccessory
+import android.hardware.usb.UsbDevice
+import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
+import com.google.android.exoplayer2.extractor.Extractor
+import com.google.android.exoplayer2.source.MediaSource
 
 
 private const val TAG = "MainActivity"
-private var DELAY_TIME = 3L
+private var DELAY_TIME: Long = 3
 private var rootPath = "/storage/self/primary/Movies"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
     private lateinit var _recyclerView: RecyclerView
-    private lateinit var _floatBtn: FloatingActionButton
+    private lateinit var _floatBtn: ExtendedFloatingActionButton
     private lateinit var _playerView: PlayerView
     private lateinit var _player: ExoPlayer
     private lateinit var _binding: ActivityMainBinding
-    private lateinit var _usbReceiver: BroadcastReceiver
     private lateinit var mediaListAdapter: MediaListAdapter
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
     //    private var _infoDialog: CustomDialog? = null
-    private val _scanFile = ScanFileUtil(rootPath)
+    private lateinit var _scanFile: ScanFileUtil
 
     private var isAutoPlay = false
 
@@ -71,21 +69,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(_binding.root)
 
-        _usbReceiver = USBReceiver { usbDiskMountState ->
-            when (usbDiskMountState) {
-                USBReceiver.USB_DISK_MOUNTED -> {
-                    rootPath = "/storage/usb0/"
-                    scan()
-                }
-                USBReceiver.USB_DISK_UNMOUNTED -> {
-                    rootPath = "/storage/self/primary/Movies"
-                    stopScan()
-                }
-            }
-        }
         initReceiver()
         initView()
-        initScan()
     }
 
     override fun onResume() {
@@ -99,11 +84,26 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     }
 
     private fun initReceiver() {
+
+        val usbReceiver = USBReceiver { usbDiskMountState ->
+            Log.i(TAG, "USB: ${usbDiskMountState}")
+            when (usbDiskMountState) {
+                USBReceiver.USB_DISK_MOUNTED -> {
+                    rootPath = "/storage/usb0/"
+//                    rootPath = Environment.getExternalStorageDirectory().absolutePath
+                    scan()
+                }
+                USBReceiver.USB_DISK_UNMOUNTED -> {
+                    rootPath = "/storage/self/primary/Movies"
+                    scan()
+                }
+            }
+        }
         val usbDeviceStateFilter = IntentFilter()
         usbDeviceStateFilter.addAction(Intent.ACTION_MEDIA_MOUNTED)
         usbDeviceStateFilter.addAction(Intent.ACTION_MEDIA_UNMOUNTED)
         usbDeviceStateFilter.addDataScheme("file")
-        registerReceiver(_usbReceiver, usbDeviceStateFilter)
+        registerReceiver(usbReceiver, usbDeviceStateFilter)
     }
 
     private fun initView() {
@@ -142,6 +142,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     }
 
     private fun initScan() {
+        _scanFile = ScanFileUtil(rootPath)
+        Log.i(TAG, "Scan Start: $rootPath")
         _scanFile.setCallBackFilter(
             ScanFileUtil.FileFilterBuilder().apply {
                 scanVideoFiles()
@@ -165,7 +167,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 mainViewModel.currentPosition = 0
 
                 MainScope().launch {
-                    delay(1000)
+                    delay(2000)
                     playMedia()
                 }
             }
@@ -180,13 +182,30 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
         Log.i(TAG, "Player ERROR: ${error.errorCodeName}")
-        mainViewModel.currentPlayingFine = false
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
         if (isAutoPlay) {
             MainScope().launch {
                 delay(500)
                 playNextMedia()
+            }
+        }
+    }
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        super.onPlaybackStateChanged(playbackState)
+        when (playbackState) {
+            Player.STATE_ENDED -> {
+                if (!isAutoPlay && mainViewModel.currentMediaInfo.isAbility != 2) {
+                    mainViewModel.currentMediaInfo.isAbility = 1
+                    mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                }
+            }
+            Player.STATE_READY -> {
+                if (!isAutoPlay) {
+                    mainViewModel.currentMediaInfo.isAbility = 1
+                    mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                }
             }
         }
     }
@@ -203,12 +222,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 TAG,
                 "onIsPlayingChanged, position: ${mainViewModel.currentPosition}"
             )
-            mainViewModel.currentPlayingFine = true
             if (isAutoPlay) {
                 DELAY_TIME = if (_player.duration < DELAY_TIME) _player.duration else DELAY_TIME
                 object : CountDownTimer(DELAY_TIME * 1000L, 100L) {
                     override fun onTick(millisUntilFinished: Long) {
-                        if (!mainViewModel.currentPlayingFine)
+                        if (mainViewModel.currentMediaInfo.isAbility == 2)
                             this.cancel()
                     }
 
@@ -219,9 +237,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     }
                 }.start()
             }
-        } else if (mainViewModel.currentPlayingFine) {
-            mainViewModel.currentMediaInfo.isAbility = 1
-            mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
         }
     }
 
@@ -235,15 +250,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             }
         }
 
-    private fun stopScan() {
-        _scanFile.stop()
-    }
-
     private fun scan() {
-
+        Log.i(TAG, "Scan Path: ${rootPath}")
         when (PackageManager.PERMISSION_GRANTED) {
             ContextCompat.checkSelfPermission(
-                this,
+                this@MainActivity,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) -> {
                 startScan()
@@ -260,6 +271,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         if (_player.isPlaying) {
             _player.stop()
         }
+        initScan()
         mainViewModel.deleteAll()
         _scanFile.startAsyncScan()
     }
@@ -271,7 +283,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             file.length().toInt(),
             file.name,
             file.length().toInt(),
-            file.path
+            file.canonicalPath
         )
     }
 
@@ -288,7 +300,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     }
 
     private fun playMedia() {
-        Log.i(TAG, "start play: ${mainViewModel.currentPosition}")
         if (_player.isPlaying)
             _player.stop()
         if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
@@ -298,13 +309,15 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 mainViewModel.allMediaInfo.value!![mainViewModel.currentPosition]
             _recyclerView.scrollToPosition(mainViewModel.currentPosition)
 
-            Log.i(TAG, "start play: ${mainViewModel.currentMediaInfo.path}")
             if (!mainViewModel.currentMediaInfo.path.isNullOrEmpty()) {
 
+                Log.i(
+                    TAG,
+                    "start_play: ${mainViewModel.currentPosition}, path: ${mainViewModel.currentMediaInfo.path}"
+                )
                 val mediaItem =
                     MediaItem.fromUri(Uri.parse(mainViewModel.currentMediaInfo.path))
                 _player.setMediaItem(mediaItem)
-
                 _player.prepare()
                 _player.play()
                 mainViewModel.currentMediaInfo.isAbility = 3
