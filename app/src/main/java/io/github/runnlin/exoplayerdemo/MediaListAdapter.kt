@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -25,39 +26,40 @@ class MediaListAdapter :
     class MediaViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val mediaInfoName: TextView = itemView.findViewById(R.id.tv_item_name)
         private val mediaInfoIcon: ImageView = itemView.findViewById(R.id.iv_icon)
-        private val mediaInfo: LinearLayout = itemView.findViewById(R.id.ll_info)
+        private val mediaInfo: CardView = itemView.findViewById(R.id.ll_info)
         private val mediaCheckIcon: ImageView = itemView.findViewById(R.id.iv_info)
 
         @SuppressLint("ResourceAsColor")
         fun bind(current: MediaInfo) {
             mediaInfoName.text = current.title
-            if (isVideo(current.type)) {
+            if (current.type.isNotEmpty() && isVideo(current.type)) {
                 mediaInfoIcon.setImageResource(R.drawable.ic_video_library)
             } else {
                 mediaInfoIcon.setImageResource(R.drawable.ic_audiotrack)
             }
             when (current.isAbility) {
                 0 -> {
-                    mediaInfo.setBackgroundColor(Color.GRAY)
+                    mediaInfo.setCardBackgroundColor(Color.GRAY)
                     mediaCheckIcon.setImageResource(R.drawable.ic_check_ready)
                 }
                 1 -> {
-                    mediaInfo.setBackgroundColor(Color.GREEN)
+                    mediaInfo.setCardBackgroundColor(Color.GREEN)
                     mediaCheckIcon.setImageResource(R.drawable.ic_check_ok)
                 }
                 2 -> {
-                    mediaInfo.setBackgroundColor(Color.RED)
+                    mediaInfo.setCardBackgroundColor(Color.RED)
                     mediaCheckIcon.setImageResource(R.drawable.ic_check_no)
                 }
                 3 -> {
-                    mediaInfo.setBackgroundColor(Color.BLUE)
+                    mediaInfo.setCardBackgroundColor(Color.BLUE)
+                    mediaCheckIcon.setImageResource(R.drawable.ic_check_ready)
                 }
             }
         }
 
         fun isVideo(type: String?): Boolean {
             when (type?.lowercase(Locale.getDefault())) {
-                "mp4", "avi", "flv", "3gp", "mkv", "wmv" -> return true
+                "mp4", "avi", "flv", "3gp", "mkv", "wmv", "m4v", "rmvb", "vob", "webm" -> return true
             }
             return false
         }

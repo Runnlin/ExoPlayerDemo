@@ -1,5 +1,6 @@
 package io.github.runnlin.exoplayerdemo
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
@@ -9,6 +10,12 @@ import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.data.MediaRepository
 import kotlinx.coroutines.launch
 import java.lang.IllegalArgumentException
+import android.content.Intent
+
+import android.os.Environment
+
+import android.os.Build
+import android.provider.Settings
 
 
 private val TAG = "MainViewModel"
@@ -17,7 +24,6 @@ class MainViewModel(private val repository: MediaRepository): ViewModel() {
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
     var currentPosition: Int = -1
-    var currentPlayingFine: Boolean = false
     lateinit var currentMediaInfo: MediaInfo
 
     fun insert(mediaInfo: MediaInfo) = viewModelScope.launch {

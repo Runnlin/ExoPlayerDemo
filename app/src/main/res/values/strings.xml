@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">ExoPlayerDemo</string>
     <string name="refresh_list">刷新列表</string>
+    <string name="refresh">刷新</string>
 </resources>
