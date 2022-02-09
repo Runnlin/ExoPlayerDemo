@@ -330,7 +330,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 )
                 _player.setMediaItem(mediaItem)
                 _player.prepare()
-//                _player.play()
+                _player.play()
                 mainViewModel.currentMediaInfo.isAbility = 3
                 mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
