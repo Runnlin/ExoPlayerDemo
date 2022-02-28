@@ -12,9 +12,16 @@ android {
         minSdk 26
         targetSdk 31
         versionCode 1
-        versionName "1.0"
+        versionName "1.8"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    android.applicationVariants.all {
+        variant ->
+            variant.outputs.all {
+                //这里修改apk文件名
+                outputFileName = "DesaysvMediaTester_${variant.name}_v${variant.versionName}_${releaseTime()}.apk"
+            }
     }
 
     buildTypes {
@@ -36,7 +43,9 @@ android {
     }
 
 }
-
+static def releaseTime() {
+    return new Date().format("yyyyMMdd", TimeZone.getTimeZone("GMT+8"))
+}
 //android.applicationVariants.all { variant ->
 //    variant.outputs.all {
 //        outputFileName = "Desaysv-MediaTester_Exo-"+versionName+".apk"

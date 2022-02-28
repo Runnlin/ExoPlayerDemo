@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+
     <com.google.android.exoplayer2.ui.PlayerView
         android:id="@+id/video_view"
         android:layout_width="0dp"
@@ -17,6 +18,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <ImageView
+        android:id="@+id/isMusicActiveIcon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:src="@drawable/ic_play_circle_filled"
+        app:layout_constraintLeft_toLeftOf="@+id/video_view"
+        app:layout_constraintBottom_toBottomOf="@+id/video_view" />
     <View
         android:id="@+id/view"
         android:layout_width="2dp"

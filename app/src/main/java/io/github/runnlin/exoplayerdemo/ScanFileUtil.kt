@@ -609,6 +609,9 @@ class ScanFileUtil {
             mFilseFilterSet.add("vob")
             mFilseFilterSet.add("mkv")
             mFilseFilterSet.add("webm")
+            mFilseFilterSet.add("mpeg")
+            mFilseFilterSet.add("mpg")
+            mFilseFilterSet.add("mov")
         }
 
         /**
@@ -627,6 +630,8 @@ class ScanFileUtil {
             mFilseFilterSet.add("wav")
             mFilseFilterSet.add("wma")
             mFilseFilterSet.add("alac")
+            mFilseFilterSet.add("amr")
+            mFilseFilterSet.add("opus")
         }
 
         /**
