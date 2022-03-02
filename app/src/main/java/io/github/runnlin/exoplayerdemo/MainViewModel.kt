@@ -22,6 +22,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.*
 
 
 private val TAG = "MainViewModel"
@@ -57,6 +58,12 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
             }
             Log.i(TAG, "initLogFile Success: $fileName")
         }
+    }
+    fun isVideo(type: String?): Boolean {
+        when (type?.lowercase(Locale.getDefault())) {
+            "mp4", "avi", "flv", "3gp", "mkv", "wmv", "m4v", "rmvb", "vob", "webm", "mpeg", "mpg", "mov" -> return true
+        }
+        return false
     }
 
     fun saveLog(content: String) {
