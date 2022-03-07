@@ -30,6 +30,7 @@ private val TAG = "MainViewModel"
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     val usbMessPath = "/storage/usb0/"
+//    val usbMessPath = "/mnt/pass_through/0/usb0/"
 
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"
@@ -37,6 +38,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     val logFileName = "DecoderTestLog.txt"
 
     var isExternalStorage = false
+    var isLogEnable = false
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
     var currentPosition: Int = -1
@@ -57,6 +59,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
                 out.println("\n\n------------${LocalDateTime.now()}------------\n")
             }
             Log.i(TAG, "initLogFile Success: $fileName")
+            isLogEnable = true
         }
     }
     fun isVideo(type: String?): Boolean {
@@ -67,7 +70,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     }
 
     fun saveLog(content: String) {
-        if (!logFile.exists() || !isExternalStorage || !logFile.canWrite()) return
+        if (!isExternalStorage && !isLogEnable) return
         Log.i(TAG, "saveLog: $content")
 
         current = LocalDateTime.now()

@@ -6,18 +6,21 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -36,8 +39,6 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Paths
 
 
 private const val TAG = "ExoMainActivity"
@@ -75,7 +76,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 
         initReceiver()
         initView()
-        mainViewModel.initLogFile()
+        initScan()
+//        mainViewModel.initLogFile()
+//        checkIsMusicActive()
     }
 
     override fun onResume() {
@@ -86,7 +89,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        checkIsMusicActive()
     }
 
     private fun checkIsMusicActive() {
@@ -115,11 +117,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
-                    rootPath = mainViewModel.internalPath
+//                    rootPath = mainViewModel.internalPath
                     mainViewModel.isExternalStorage = false
 //                    scan()
 
-                    mainViewModel.deleteAll()
+//                    mainViewModel.deleteAll()
                     getAllFilesInResources()
 
                 }
@@ -132,7 +134,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         registerReceiver(usbReceiver, usbDeviceStateFilter)
     }
 
-    fun getAllFilesInResources() {
+    private fun getAllFilesInResources() {
         mainViewModel.deleteAll()
         for (i in 1..10) {
             val pathInner = resources.getIdentifier("a${i}", "raw", packageName)
@@ -147,6 +149,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     )
                 )
             }
+        }
+        MainScope().launch {
+            delay(500)
+            playMedia()
+            _floatBtn.isEnabled = false
         }
     }
 
@@ -245,7 +252,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         Log.i(TAG, "Player ERROR: ${error.errorCodeName},   ${error.message}")
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-//        mainViewModel.saveLog("播放失败: ${error.errorCodeName},   ${error.message}\n\n")
+        mainViewModel.saveLog("播放失败: ${error.errorCodeName},   ${error.message}\n\n")
         delayPlayNextMedia()
     }
 
@@ -293,7 +300,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     override fun onFinish() {
                         mainViewModel.currentMediaInfo.isAbility = 1
                         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-//                        mainViewModel.saveLog("播放成功\n\n")
+                        mainViewModel.saveLog("播放成功\n\n")
                         delayPlayNextMedia()
                     }
                 }.start()
@@ -343,7 +350,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         if (_player.isPlaying) {
             _player.stop()
         }
-        initScan()
+        _scanFile.stop()
         _scanFile.startAsyncScan()
     }
 
@@ -375,11 +382,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 
             if (!mainViewModel.currentMediaInfo.path.isNullOrEmpty()) {
 
-                val path =
-                    mainViewModel.currentMediaInfo.path ?: "https://v-cdn.zjol.com.cn/276982.mp4"
+                val path = mainViewModel.currentMediaInfo.path!!
                 Log.i(
                     TAG,
-                    "start_play: ${mainViewModel.currentPosition}, path: ${path}"
+                    "start_play: ${mainViewModel.currentPosition}, path: $path"
                 )
                 val mediaItem = MediaItem.fromUri(
                     path
@@ -390,27 +396,27 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 mainViewModel.currentMediaInfo.isAbility = 3
                 mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
-//                try {
-//                    val mmr = MediaMetadataRetriever()
-//                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-//                    Log.i(
-//                        TAG,
-//                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-//                            ?: "NO TITLE") +
-//                                "\nALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-//                            ?: "NO ALBUM")
-//                    )
-//                    mainViewModel.saveLog(
-//                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-//                            ?: "NO TITLE") +
-//                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-//                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
-//                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
-//                        ))
-//                    )
-//                } catch (e: RuntimeException) {
-//                    Log.e(TAG, e.stackTraceToString())
-//                }
+                try {
+                    val mmr = MediaMetadataRetriever()
+                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
+                    Log.i(
+                        TAG,
+                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                            ?: "NO TITLE") +
+                                "\nALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                            ?: "NO ALBUM")
+                    )
+                    mainViewModel.saveLog(
+                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                            ?: "NO TITLE") +
+                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
+                        ))
+                    )
+                } catch (e: RuntimeException) {
+                    Log.e(TAG, e.stackTraceToString())
+                }
 
             }
 
