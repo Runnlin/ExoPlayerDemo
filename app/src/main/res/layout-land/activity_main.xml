@@ -22,6 +22,7 @@
         android:id="@+id/isMusicActiveIcon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:layout_margin="12dp"
         android:src="@drawable/ic_play_circle_filled"
         app:layout_constraintLeft_toLeftOf="@+id/video_view"

@@ -20,6 +20,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="12dp"
+        android:visibility="gone"
         android:src="@drawable/ic_play_circle_filled"
         app:layout_constraintLeft_toLeftOf="@+id/video_view"
         app:layout_constraintBottom_toBottomOf="@+id/video_view" />
