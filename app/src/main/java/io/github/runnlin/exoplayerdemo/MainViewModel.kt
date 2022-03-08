@@ -29,8 +29,8 @@ private val TAG = "MainViewModel"
 
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
-    val usbMessPath = "/storage/usb0/"
-//    val usbMessPath = "/mnt/pass_through/0/usb0/"
+//    val usbMessPath = "/storage/usb0/"
+    val usbMessPath = "/mnt/media_rw/usb0/"
 
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"

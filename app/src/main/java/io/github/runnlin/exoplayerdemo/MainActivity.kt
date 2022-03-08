@@ -45,8 +45,8 @@ private const val TAG = "ExoMainActivity"
 private var DELAY_TIME: Long = 20L
 
 @SuppressLint("SdCardPath")
-private var rootPath = "/sdcard/Movies"
-//private var rootPath = "/storage/usb0/"
+//private var rootPath = "/sdcard/Movies"
+private var rootPath = "/mnt/media_rw/usb0/"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
@@ -252,7 +252,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         Log.i(TAG, "Player ERROR: ${error.errorCodeName},   ${error.message}")
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-        mainViewModel.saveLog("播放失败: ${error.errorCodeName},   ${error.message}\n\n")
+//        mainViewModel.saveLog("播放失败: ${error.errorCodeName},   ${error.message}\n\n")
         delayPlayNextMedia()
     }
 
@@ -300,7 +300,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     override fun onFinish() {
                         mainViewModel.currentMediaInfo.isAbility = 1
                         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                        mainViewModel.saveLog("播放成功\n\n")
+//                        mainViewModel.saveLog("播放成功\n\n")
                         delayPlayNextMedia()
                     }
                 }.start()
@@ -325,18 +325,18 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 this@MainActivity,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    if (Environment.isExternalStorageManager()) {
-                        mainViewModel.isExternalStorage = true
-                        startScan()
-                    } else {
-                        val intent = Intent()
-                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                        startActivity(intent)
-                    }
-                } else {
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//                    if (Environment.isExternalStorageManager()) {
+//                        mainViewModel.isExternalStorage = true
+//                        startScan()
+//                    } else {
+//                        val intent = Intent()
+//                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+//                        startActivity(intent)
+//                    }
+//                } else {
                     startScan()
-                }
+//                }
             }
             else -> {
                 requestPermissionLauncher.launch(
@@ -396,27 +396,27 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 mainViewModel.currentMediaInfo.isAbility = 3
                 mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
-                try {
-                    val mmr = MediaMetadataRetriever()
-                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-                    Log.i(
-                        TAG,
-                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                            ?: "NO TITLE") +
-                                "\nALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                            ?: "NO ALBUM")
-                    )
-                    mainViewModel.saveLog(
-                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                            ?: "NO TITLE") +
-                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
-                        ))
-                    )
-                } catch (e: RuntimeException) {
-                    Log.e(TAG, e.stackTraceToString())
-                }
+//                try {
+//                    val mmr = MediaMetadataRetriever()
+//                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
+//                    Log.i(
+//                        TAG,
+//                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+//                            ?: "NO TITLE") +
+//                                "\nALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+//                            ?: "NO ALBUM")
+//                    )
+//                    mainViewModel.saveLog(
+//                        "TITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+//                            ?: "NO TITLE") +
+//                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+//                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
+//                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
+//                        ))
+//                    )
+//                } catch (e: RuntimeException) {
+//                    Log.e(TAG, e.stackTraceToString())
+//                }
 
             }
 
