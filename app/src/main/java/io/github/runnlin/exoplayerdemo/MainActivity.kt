@@ -170,14 +170,15 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         }
 
         _floatBtn.setOnClickListener {
-            rootPath = _editText.text.toString()
             Log.i(TAG, "_floatBtn path:$rootPath")
             mainViewModel.deleteAll()
-            startScan()
+            rootPath = _editText.text.toString()
+            scan()
         }
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
+            mainViewModel.isExternalStorage = false
             getAllFilesInResources()
         }
     }
@@ -323,7 +324,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                         startActivity(intent)
                     }
                 } else {
-                startScan()
+                    startScan()
                 }
             }
             else -> {
