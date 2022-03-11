@@ -136,10 +136,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 )
             }
         }
-        MainScope().launch {
-            delay(500)
-            playMedia()
-        }
     }
 
     private fun initView() {
@@ -243,6 +239,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         Log.i(TAG, "Player ERROR: ${error.errorCodeName},   ${error.message}")
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+        Toast.makeText(this, "Player ERROR:${error.message}", Toast.LENGTH_LONG).show()
 //        mainViewModel.saveLog("播放失败: ${error.errorCodeName},   ${error.message}\n\n")
         delayPlayNextMedia()
     }
@@ -346,9 +343,14 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     }
 
     override fun onPlayListener(mediaInfo: MediaInfo, position: Int) {
+        if (mainViewModel.currentPosition != -1 && mainViewModel.currentMediaInfo.isAbility == 3) {
+            mainViewModel.currentMediaInfo.isAbility = 0
+            mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+        }
         mainViewModel.currentMediaInfo = mediaInfo
         mainViewModel.currentPosition = position
         isAutoPlay = false
+
         playMedia()
     }
 

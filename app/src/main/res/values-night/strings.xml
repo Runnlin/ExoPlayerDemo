@@ -2,5 +2,5 @@
 <resources>
     <string name="refresh_list">刷新列表</string>
     <string name="gainLocalList">获取本地</string>
-    <string name="loadLocalList">载入自带资源</string>
+    <string name="loadLocalList">载入内置资源</string>
 </resources>
