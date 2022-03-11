@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">ExoPlayerDemo</string>
     <string name="refresh_list">刷新列表</string>
-    <string name="refresh">刷新</string>
+    <string name="refresh">读取路径资源</string>
+    <string name="gainLocalList">获取本地</string>
+    <string name="loadLocalList">载入自带资源</string>
 </resources>

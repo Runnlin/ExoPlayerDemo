@@ -6,21 +6,20 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.AudioManager
-import android.media.MediaMetadataRetriever
+import android.media.AudioPlaybackConfiguration
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
-import android.view.animation.OvershootInterpolator
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -46,12 +45,15 @@ private var DELAY_TIME: Long = 20L
 
 @SuppressLint("SdCardPath")
 //private var rootPath = "/sdcard/Movies"
-private var rootPath = "/mnt/media_rw/usb0/"
+//private var rootPath = "/mnt/media_rw/usb0/"
+private var rootPath = "/storage/usb0"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
     private lateinit var _recyclerView: RecyclerView
     private lateinit var _floatBtn: ExtendedFloatingActionButton
+    private lateinit var _floatBtnLocal: ExtendedFloatingActionButton
+    private lateinit var _editText: EditText
     private lateinit var _playerView: PlayerView
     private lateinit var _isMusicActive: ImageView
     private lateinit var _player: ExoPlayer
@@ -63,7 +65,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private lateinit var _scanFile: ScanFileUtil
 
     private var isAutoPlay = false
-    private lateinit var audioManager: AudioManager
 
     private val mainViewModel: MainViewModel by viewModels {
         MediaViewModelFactory((application as ExpPlayerDemoApplication).repository)
@@ -78,7 +79,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         initView()
         initScan()
 //        mainViewModel.initLogFile()
-//        checkIsMusicActive()
     }
 
     override fun onResume() {
@@ -91,28 +91,14 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         }
     }
 
-    private fun checkIsMusicActive() {
-        MainScope().launch {
-            while (true) {
-                delay(500L)
-                audioManager = baseContext.getSystemService(AUDIO_SERVICE) as AudioManager
-//                Log.i(TAG, "audioManager.isMusicActive:" + audioManager.isMusicActive)
-                if (audioManager.isMusicActive) {
-                    _isMusicActive.setImageResource(R.drawable.ic_play_circle_filled)
-                } else {
-                    _isMusicActive.setImageResource(R.drawable.ic_play_circle_filled_no)
-                }
-            }
-        }
-    }
-
     private fun initReceiver() {
 
         val usbReceiver = USBReceiver { usbDiskMountState ->
             Log.i(TAG, "USB: ${usbDiskMountState}")
             when (usbDiskMountState) {
                 USBReceiver.USB_DISK_MOUNTED -> {
-                    rootPath = mainViewModel.usbMessPath
+//                    rootPath = mainViewModel.usbMessPath
+                    rootPath = _editText.text.toString()
                     mainViewModel.isExternalStorage = true
                     scan()
                 }
@@ -122,7 +108,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 //                    scan()
 
 //                    mainViewModel.deleteAll()
-                    getAllFilesInResources()
+//                    getAllFilesInResources()
 
                 }
             }
@@ -153,7 +139,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         MainScope().launch {
             delay(500)
             playMedia()
-            _floatBtn.isEnabled = false
         }
     }
 
@@ -161,6 +146,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _recyclerView = _binding.rvPlaylist
         _playerView = _binding.videoView
         _floatBtn = _binding.floatBtn
+        _floatBtnLocal = _binding.floatBtnLocal
+        _editText = _binding.textInputEditText
         _isMusicActive = _binding.isMusicActiveIcon
         builderForInfoDialog = CustomDialog.Builder(this)
         mediaListAdapter = MediaListAdapter()
@@ -187,11 +174,15 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         }
 
         _floatBtn.setOnClickListener {
-            Log.i(TAG, "setOnClickListener")
-            if (mainViewModel.isExternalStorage)
-                scan()
-            else
-                getAllFilesInResources()
+            rootPath = _editText.text.toString()
+            Log.i(TAG, "_floatBtn path:$rootPath")
+            mainViewModel.deleteAll()
+            startScan()
+        }
+
+        _floatBtnLocal.setOnClickListener {
+            Log.i(TAG, "_floatBtnLocal ")
+            getAllFilesInResources()
         }
     }
 
@@ -325,18 +316,18 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 this@MainActivity,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) -> {
-//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-//                    if (Environment.isExternalStorageManager()) {
-//                        mainViewModel.isExternalStorage = true
-//                        startScan()
-//                    } else {
-//                        val intent = Intent()
-//                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-//                        startActivity(intent)
-//                    }
-//                } else {
-                    startScan()
-//                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (Environment.isExternalStorageManager()) {
+                        mainViewModel.isExternalStorage = true
+                        startScan()
+                    } else {
+                        val intent = Intent()
+                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                        startActivity(intent)
+                    }
+                } else {
+                startScan()
+                }
             }
             else -> {
                 requestPermissionLauncher.launch(

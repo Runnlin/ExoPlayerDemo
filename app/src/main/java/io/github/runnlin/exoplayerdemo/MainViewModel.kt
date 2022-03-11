@@ -11,6 +11,7 @@ import io.github.runnlin.exoplayerdemo.data.MediaRepository
 import kotlinx.coroutines.launch
 import java.lang.IllegalArgumentException
 import android.content.Intent
+import android.media.AudioManager
 
 import android.os.Environment
 
@@ -23,14 +24,15 @@ import java.io.InputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.math.log
 
 
 private val TAG = "MainViewModel"
 
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
-//    val usbMessPath = "/storage/usb0/"
-    val usbMessPath = "/mnt/media_rw/usb0/"
+    val usbMessPath = "/storage/usb0/"
+//    val usbMessPath = "/mnt/media_rw/usb0/"
 
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"
@@ -54,6 +56,9 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
         if (!isExternalStorage) return
         val fileName = usbMessPath + logFileName
         logFile = File(fileName)
+        if (!logFile.exists()) {
+            logFile.createNewFile()
+        }
         if (logFile.canWrite()) {
             logFile.printWriter().use { out ->
                 out.println("\n\n------------${LocalDateTime.now()}------------\n")
