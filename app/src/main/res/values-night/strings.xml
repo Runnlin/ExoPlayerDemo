@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="refresh_list">刷新列表</string>
+    <string name="gainLocalList">获取本地</string>
+    <string name="loadLocalList">载入自带资源</string>
 </resources>
