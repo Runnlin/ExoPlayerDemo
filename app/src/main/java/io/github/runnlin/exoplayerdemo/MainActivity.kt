@@ -5,8 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.media.AudioManager
-import android.media.AudioPlaybackConfiguration
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -45,8 +43,8 @@ private var DELAY_TIME: Long = 20L
 
 @SuppressLint("SdCardPath")
 //private var rootPath = "/sdcard/Movies"
-//private var rootPath = "/mnt/media_rw/usb0/"
-private var rootPath = "/storage/usb0"
+private var rootPath = "/mnt/media_rw/usb0/"
+//private var rootPath = "/storage/usb0"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
 
@@ -106,9 +104,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 //                    rootPath = mainViewModel.internalPath
                     mainViewModel.isExternalStorage = false
 //                    scan()
-
-//                    mainViewModel.deleteAll()
-//                    getAllFilesInResources()
+                    getAllFilesInResources()
 
                 }
             }
@@ -316,18 +312,18 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                 this@MainActivity,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    if (Environment.isExternalStorageManager()) {
-                        mainViewModel.isExternalStorage = true
-                        startScan()
-                    } else {
-                        val intent = Intent()
-                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                        startActivity(intent)
-                    }
-                } else {
-                startScan()
-                }
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//                    if (Environment.isExternalStorageManager()) {
+//                        mainViewModel.isExternalStorage = true
+//                        startScan()
+//                    } else {
+//                        val intent = Intent()
+//                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+//                        startActivity(intent)
+//                    }
+//                } else {
+                    startScan()
+//                }
             }
             else -> {
                 requestPermissionLauncher.launch(
