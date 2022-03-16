@@ -1,6 +1,5 @@
 package io.github.runnlin.exoplayerdemo
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
@@ -9,25 +8,18 @@ import androidx.lifecycle.viewModelScope
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.data.MediaRepository
 import kotlinx.coroutines.launch
-import java.lang.IllegalArgumentException
-import android.content.Intent
-import android.media.AudioManager
-
-import android.os.Environment
-
-import android.os.Build
-import android.provider.Settings
-import com.google.android.material.timepicker.TimeFormat
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
-import kotlin.math.log
 
 
-private val TAG = "MainViewModel"
+private val TAG = "ZRL|MainViewModel"
 
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
@@ -37,36 +29,50 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"
     val internalPath = "/storage/self/primary/Movies/"
-    val logFileName = "DecoderTestLog.txt"
+    val logFileName = "DesaysvDecodeTesterLog.txt"
 
     var isExternalStorage = false
     var isLogEnable = false
+    private var filePath = ""
+    private lateinit var fileOutputStream: FileOutputStream
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
     var currentPosition: Int = -1
     lateinit var currentMediaInfo: MediaInfo
 
-    lateinit var current: LocalDateTime
-    lateinit var formatter: DateTimeFormatter
-    lateinit var formatted: String
-
     private lateinit var logFile: File
 
-    fun initLogFile() {
-        if (!isExternalStorage) return
-        val fileName = usbMessPath + logFileName
-        logFile = File(fileName)
-        if (!logFile.exists()) {
-            logFile.createNewFile()
-        }
-        if (logFile.canWrite()) {
-            logFile.printWriter().use { out ->
-                out.println("\n\n------------${LocalDateTime.now()}------------\n")
+    fun initLogFile(): Boolean {
+        Log.i(TAG, "Ready createLogFile ")
+
+        if (File(usbMessPath).exists()) {
+            filePath = usbMessPath + logFileName
+            fileOutputStream = FileOutputStream(filePath)
+            logFile = File(filePath)
+            if (!logFile.exists()) {
+                logFile.createNewFile()
+                Log.i(TAG, "createLogFile Success: $filePath")
             }
-            Log.i(TAG, "initLogFile Success: $fileName")
-            isLogEnable = true
+            if (logFile.canWrite()) {
+                try {
+                    Files.write(
+                        Paths.get(logFile.toURI()),
+                        "\n\n------------${LocalDateTime.now()}------------\n\n".toByteArray(),
+                        StandardOpenOption.APPEND
+                    )
+                    isLogEnable = true
+                    return true
+                } catch (e: IOException) {
+                    Log.i(TAG, "initLogFile Failed: $e")
+                }
+            }
+        } else {
+            Log.i(TAG, "Can't Create LogFile, no messPath ")
+            isLogEnable = false
         }
+        return false
     }
+
     fun isVideo(type: String?): Boolean {
         when (type?.lowercase(Locale.getDefault())) {
             "mp4", "avi", "flv", "3gp", "mkv", "wmv", "m4v", "rmvb", "vob", "webm", "mpeg", "mpg", "mov" -> return true
@@ -78,13 +84,20 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
         if (!isExternalStorage && !isLogEnable) return
         Log.i(TAG, "saveLog: $content")
 
-        current = LocalDateTime.now()
-        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss.SSSS")
-        formatted = current.format(formatter)
+        val current = LocalDateTime.now()
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss.SSSS")
+        val formatted = current.format(formatter)
 
-        logFile.printWriter().use { out ->
-            out.println("$formatted-->$content")
+        try {
+            Files.write(
+                Paths.get(logFile.toURI()),
+                "$formatted-->$content\n".toByteArray(),
+                StandardOpenOption.APPEND
+            )
+        } catch (e: IOException) {
+            Log.i(TAG, "saveLog Failed: $e")
         }
+
     }
 
     fun insert(mediaInfo: MediaInfo) = viewModelScope.launch {
