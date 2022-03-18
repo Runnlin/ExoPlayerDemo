@@ -5,18 +5,20 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.media.AudioManager
-import android.media.AudioPlaybackConfiguration
-import android.media.MediaMetadataRetriever
+import android.media.*
+import android.media.MediaPlayer.OnCompletionListener
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.Toast
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.View
+import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -27,11 +29,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
@@ -42,30 +39,38 @@ import java.io.File
 
 
 private const val TAG = "ZRL|ExoMainActivity"
-private var DELAY_TIME: Long = 20L
+private var DELAY_TIME: Long = 5L
 
 @SuppressLint("SdCardPath")
 //private var rootPath = "/sdcard/Movies"
 //private var rootPath = "/mnt/media_rw/usb0/"
 private var rootPath = "/storage/usb0"
 
-class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, Player.Listener {
+class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
+    SurfaceHolder.Callback {
 
     private lateinit var _recyclerView: RecyclerView
     private lateinit var _floatBtn: ExtendedFloatingActionButton
     private lateinit var _floatBtnLocal: ExtendedFloatingActionButton
     private lateinit var _editText: EditText
-    private lateinit var _playerView: PlayerView
-    private lateinit var _isMusicActive: ImageView
-    private lateinit var _player: ExoPlayer
+    private lateinit var _playerView: SurfaceView
+    private lateinit var _player: MediaPlayer
+
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
+    private lateinit var _swLoop: Switch
+    private lateinit var _cover: ImageView
+
+    //    private lateinit var _player: ExoPlayer
     private lateinit var _binding: ActivityMainBinding
     private lateinit var mediaListAdapter: MediaListAdapter
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
     //    private var _infoDialog: CustomDialog? = null
     private lateinit var _scanFile: ScanFileUtil
+    private var playbackPosition = 0
 
-    private var isAutoPlay = false
+    private var isAutoPlay = false // 自动切曲
+    private var isFailed = false // 已经失败（onError回调会调用多次，返回不同的Extra）
 
     private val mainViewModel: MainViewModel by viewModels {
         MediaViewModelFactory((application as ExpPlayerDemoApplication).repository)
@@ -79,7 +84,16 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         initReceiver()
         initView()
         initScan()
-//        mainViewModel.initLogFile()
+
+        val holder = _playerView.holder
+        holder.addCallback(this)
+        mainViewModel.initLogFile()
+    }
+
+    override fun onStop() {
+        _player.stop()
+        _player.release()
+        super.onStop()
     }
 
     override fun onResume() {
@@ -92,26 +106,27 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        playbackPosition = _player.currentPosition
+    }
+
     private fun initReceiver() {
 
         val usbReceiver = USBReceiver { usbDiskMountState ->
             Log.i(TAG, "USB: ${usbDiskMountState}")
             when (usbDiskMountState) {
                 USBReceiver.USB_DISK_MOUNTED -> {
-//                    rootPath = mainViewModel.usbMessPath
                     rootPath = _editText.text.toString()
                     scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
-//                    rootPath = mainViewModel.internalPath
                     mainViewModel.deleteAll()
                     mainViewModel.isExternalStorage = false
-                    if (_player.isPlaying)
+                    if (_player.isPlaying) {
                         _player.stop()
-//                    scan()
-
-//                    getAllFilesInResources()
-
+                        _player.release()
+                    }
                 }
             }
         }
@@ -125,15 +140,26 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private fun getAllFilesInResources() {
         mainViewModel.deleteAll()
         for (i in 1..10) {
-            val pathInner = resources.getIdentifier("a${i}", "raw", packageName)
-            if (pathInner != 0) {
-                Log.i(TAG, "InnerMedia Add: android.resource://$packageName/${pathInner}")
+            val resourceID = resources.getIdentifier("a${i}", "raw", packageName)
+            if (resourceID != 0) {
+                var resourceName = resources.getResourceEntryName(resourceID)
+                resourceName = resourceName.substring(
+                    resourceName.lastIndexOf(
+                        "/"
+                    ) + 1
+                )
+                Log.i(TAG, resourceName)
                 mainViewModel.insert(
                     MediaInfo(
-                        uuid = "$pathInner",
-                        type = "Video",
-                        title = "TestMedia_a${i}",
-                        path = "android.resource://$packageName/${pathInner}"
+                        uuid = "$resourceID",
+                        title = resourceName,
+                        type =
+                        resourceName.substring(
+                            resourceName.lastIndexOf(
+                                "."
+                            ) + 1
+                        ),
+                        path = "android.resource://$packageName/${resourceID}"
                     )
                 )
             }
@@ -146,7 +172,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _floatBtn = _binding.floatBtn
         _floatBtnLocal = _binding.floatBtnLocal
         _editText = _binding.textInputEditText
-        _isMusicActive = _binding.isMusicActiveIcon
+        _swLoop = _binding.swLoop
+        _cover = _binding.ivCover
         builderForInfoDialog = CustomDialog.Builder(this)
         mediaListAdapter = MediaListAdapter()
         mediaListAdapter.addItemClickListener(this)
@@ -164,13 +191,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             mediaListAdapter.submitList(medias)
         }
 
-        _player = ExoPlayer.Builder(this).build().apply {
-            playWhenReady = true
-            pauseAtEndOfMediaItems = true
-            _playerView.player = this
-            addListener(this@MainActivity)
-        }
-
         _floatBtn.setOnClickListener {
             Log.i(TAG, "_floatBtn path:$rootPath")
             rootPath = _editText.text.toString()
@@ -181,6 +201,111 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             Log.i(TAG, "_floatBtnLocal ")
             mainViewModel.isExternalStorage = false
             getAllFilesInResources()
+        }
+
+        _swLoop.setOnCheckedChangeListener { buttonView, isChecked ->
+            isAutoPlay = isChecked
+        }
+    }
+
+    private fun setupMediaPlayer(surface: Surface) {
+        _player = MediaPlayer().apply {
+            setSurface(surface)
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .build()
+            )
+        }
+    }
+
+    private fun prepareMediaPlayer(path: Uri) {
+        _player.reset()
+        try {
+            _player.setDataSource(this, path)
+//            _player.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+            _player.prepareAsync()
+
+        } catch (e: IllegalStateException) {
+            e.printStackTrace()
+        }
+
+        /** PLAYER STATUS **/
+        _player.setOnPreparedListener {
+            _player.start()
+            if (_player.isPlaying) {
+
+                mainViewModel.currentMediaInfo.isAbility = 3
+                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+
+                Log.i(TAG, "!!!!!!!isPlaying:\n${it.metrics}")
+                if (isAutoPlay) {
+                    val delayTime =
+                        if (_player.duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
+                    object : CountDownTimer(delayTime * 1000L, 100) {
+                        override fun onTick(millisUntilFinished: Long) {
+                            if (mainViewModel.currentMediaInfo.isAbility == 2 ||
+                                !isAutoPlay ||
+                                !_player.isPlaying
+                            )
+                                this.cancel()
+                        }
+
+                        override fun onFinish() {
+                            mainViewModel.currentMediaInfo.isAbility = 1
+                            mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                            mainViewModel.saveLog("播放成功，自动切曲\n\n")
+                            Log.i(TAG, "播放成功，自动切曲")
+                            delayPlayNextMedia()
+                        }
+                    }.start()
+                }
+            }
+        }
+
+        _player.setOnVideoSizeChangedListener { player, width, height ->
+            setSurfaceDimensions(player, width, height)
+        }
+
+        _player.setOnBufferingUpdateListener { mp, percent ->
+            Log.i(TAG, "!!!!!!!isBuffering")
+        }
+
+        _player.setOnErrorListener { _, what, extra ->
+            if (!isFailed) {
+                // 确保只调用一次
+                isFailed = true
+
+                Log.wtf(
+                    TAG,
+                    "!!!!!!!ERROR: what:${mainViewModel.whatToString(true, what)} extra:$extra"
+                )
+
+                mainViewModel.currentMediaInfo.isAbility = 2
+                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                mainViewModel.saveLog(
+                    "播放失败: what:${
+                        mainViewModel.whatToString(
+                            true,
+                            what
+                        )
+                    },   extra:${extra}\n\n"
+                )
+                delayPlayNextMedia()
+            }
+            false
+
+        }
+
+        _player.setOnCompletionListener {
+            if (!isFailed) {
+                mainViewModel.currentMediaInfo.isAbility = 1
+                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                Log.i(TAG, "播放完成\n\n")
+                mainViewModel.saveLog("播放完成\n\n")
+                delayPlayNextMedia()
+            }
         }
     }
 
@@ -195,9 +320,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _scanFile.setScanFileListener(object : ScanFileUtil.ScanFileListener {
             override fun scanBegin() {
                 Log.i(TAG, "Scan Begin: $rootPath")
-                _player.clearMediaItems()
+//                _player.clearMediaItems()
                 mainViewModel.deleteAll()
-                isAutoPlay = false
+                _swLoop.isChecked = false
                 _floatBtn.isEnabled = false
             }
 
@@ -208,7 +333,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
 //                    "Scan Done, consumed: $timeConsuming",
 //                    Toast.LENGTH_SHORT
 //                ).show()
-                isAutoPlay = true
+                _swLoop.isChecked = true
                 mainViewModel.currentPosition = 0
 
                 MainScope().launch {
@@ -231,71 +356,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
             file.length().toInt(),
             file.name,
             file.length().toInt(),
-            file.canonicalPath
+            file.absolutePath
         )
-    }
-
-    /** PLAYER STATUS **/
-    override fun onPlayerError(error: PlaybackException) {
-        super.onPlayerError(error)
-        Log.i(TAG, "Player ERROR: ${error.errorCodeName},   ${error.message}")
-        mainViewModel.currentMediaInfo.isAbility = 2
-        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-        Toast.makeText(this, "Player ERROR:${error.message}", Toast.LENGTH_LONG).show()
-        mainViewModel.saveLog("播放失败: ${error.errorCodeName},   ${error.message}\n\n")
-        delayPlayNextMedia()
-    }
-
-    override fun onPlaybackStateChanged(playbackState: Int) {
-        super.onPlaybackStateChanged(playbackState)
-        when (playbackState) {
-            Player.STATE_ENDED -> {
-                if (!isAutoPlay && mainViewModel.currentMediaInfo.isAbility != 2) {
-                    mainViewModel.currentMediaInfo.isAbility = 1
-                    mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                }
-            }
-            Player.STATE_READY -> {
-                if (!isAutoPlay) {
-                    mainViewModel.currentMediaInfo.isAbility = 1
-                    mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                }
-            }
-        }
-    }
-
-    override fun onIsPlayingChanged(isPlaying: Boolean) {
-        Log.i(
-            TAG,
-            "onIsPlayingChanged, isPlaying: $isPlaying"
-        )
-        super.onIsPlayingChanged(isPlaying)
-        //  *首次* isPlaying为true时说明正常播放
-        if (isPlaying) {
-            Log.i(
-                TAG,
-                "onIsPlayingChanged, position: ${mainViewModel.currentPosition}"
-            )
-            if (isAutoPlay) {
-                DELAY_TIME = if (_player.duration < DELAY_TIME) _player.duration else DELAY_TIME
-                object : CountDownTimer(DELAY_TIME * 1000L, 50) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        if (mainViewModel.currentMediaInfo.isAbility == 2 ||
-                            !isAutoPlay ||
-                            !isPlaying
-                        )
-                            this.cancel()
-                    }
-
-                    override fun onFinish() {
-                        mainViewModel.currentMediaInfo.isAbility = 1
-                        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                        mainViewModel.saveLog("播放成功\n\n")
-                        delayPlayNextMedia()
-                    }
-                }.start()
-            }
-        }
     }
 
     private val requestPermissionLauncher =
@@ -335,6 +397,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     }
 
     private fun startScan() {
+        mainViewModel.isExternalStorage = true
         if (_player.isPlaying) {
             _player.stop()
         }
@@ -350,7 +413,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         }
         mainViewModel.currentMediaInfo = mediaInfo
         mainViewModel.currentPosition = position
-        isAutoPlay = false
+//        isAutoPlay = false
 
         playMedia()
     }
@@ -367,9 +430,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
     private fun playMedia() {
 //        if (_player.isPlaying)
 //            _player.stop()
+        // 重置失败状态
+        isFailed = false
+
         if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
             _recyclerView.smoothScrollToPosition(0)
-            mainViewModel.saveLog("测试结束\n\n")
+            mainViewModel.saveLog("本次测试结束\n\n")
+
+            if (isAutoPlay) {
+                mainViewModel.currentPosition = 0
+                playMedia()
+            }
         } else if (mainViewModel.allMediaInfo.value?.get(mainViewModel.currentPosition) != null) {
             mainViewModel.currentMediaInfo =
                 mainViewModel.allMediaInfo.value!![mainViewModel.currentPosition]
@@ -382,32 +453,73 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
                     TAG,
                     "start_play: ${mainViewModel.currentPosition}, path: $path"
                 )
-                val mediaItem = MediaItem.fromUri(
-                    path
-                )
-                _player.setMediaItem(mediaItem)
-                _player.prepare()
-                _player.play()
-                mainViewModel.currentMediaInfo.isAbility = 3
-                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                prepareMediaPlayer(Uri.parse(path))
 
-                try {
-                    val mmr = MediaMetadataRetriever()
-                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-                    mainViewModel.saveLog(
-                        "File Path:" + path +
-                                "\nTITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                            ?: "NO TITLE") +
-                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
-                        ))
-                    )
-                } catch (e: RuntimeException) {
-                    Log.e(TAG, e.stackTraceToString())
+                val cover = mainViewModel.getAlbumImage(path)
+
+                if (null != cover) {
+                    _playerView.visibility = View.INVISIBLE
+                    _cover.visibility = View.VISIBLE
+                    _cover.setImageBitmap(cover)
+                } else {
+                    _playerView.visibility = View.VISIBLE
+                    _cover.visibility = View.INVISIBLE
                 }
+
+                if (mainViewModel.isExternalStorage)
+                    try {
+                        val mmr = MediaMetadataRetriever()
+                        mmr.setDataSource(mainViewModel.currentMediaInfo.path)
+                        mainViewModel.saveLog(
+                            "File Path:" + path +
+                                    "\nTITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                                ?: "NO TITLE") +
+                                    "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                                ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_MIMETYPE
+                            ))
+                        )
+                    } catch (e: RuntimeException) {
+                        Log.e(TAG, e.stackTraceToString())
+                    }
+            } else {
+                Log.i(
+                    TAG,
+                    "play stop"
+                )
             }
         }
     }
 
+    private fun setSurfaceDimensions(player: MediaPlayer, width: Int, height: Int) {
+//        if (width > 0 && height > 0) {
+        val aspectRatio =
+            width.toFloat() / height.toFloat()
+        val surfaceHeight = _playerView.height
+        val surfaceWidth = (surfaceHeight * aspectRatio).toInt()
+        val params =
+            FrameLayout.LayoutParams(surfaceWidth, surfaceHeight)
+        _playerView.layoutParams = params
+        val holder = _playerView.holder
+        player.setDisplay(holder)
+//        }
+    }
+
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        val surface = holder.surface
+        setupMediaPlayer(surface)
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (_player.isPlaying)
+            _player.stop()
+        _player.release()
+    }
 }
