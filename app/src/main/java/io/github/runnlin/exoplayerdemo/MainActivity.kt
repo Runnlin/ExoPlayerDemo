@@ -39,7 +39,7 @@ import java.io.File
 
 
 private const val TAG = "ZRL|ExoMainActivity"
-private var DELAY_TIME: Long = 5L
+private var DELAY_TIME: Long = 20L
 
 @SuppressLint("SdCardPath")
 //private var rootPath = "/sdcard/Movies"
@@ -406,6 +406,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _scanFile.startAsyncScan()
     }
 
+    /* 点击项目播放 */
     override fun onPlayListener(mediaInfo: MediaInfo, position: Int) {
         if (mainViewModel.currentPosition != -1 && mainViewModel.currentMediaInfo.isAbility == 3) {
             mainViewModel.currentMediaInfo.isAbility = 0
@@ -498,7 +499,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         val surfaceHeight = _playerView.height
         val surfaceWidth = (surfaceHeight * aspectRatio).toInt()
         val params =
-            FrameLayout.LayoutParams(surfaceWidth, surfaceHeight)
+            RelativeLayout.LayoutParams(surfaceWidth, surfaceHeight)
         _playerView.layoutParams = params
         val holder = _playerView.holder
         player.setDisplay(holder)
