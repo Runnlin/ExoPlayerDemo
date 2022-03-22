@@ -24,10 +24,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
@@ -165,6 +162,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener, 
         _player = ExoPlayer.Builder(this).build().apply {
             playWhenReady = true
             pauseAtEndOfMediaItems = true
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
             _playerView.player = this
             addListener(this@MainActivity)
         }
