@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.PixelFormat
 import android.media.*
 import android.media.MediaPlayer.OnCompletionListener
 import android.net.Uri
@@ -21,6 +22,7 @@ import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -220,8 +222,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.P)
     private fun prepareMediaPlayer(path: Uri) {
         _player.reset()
+        _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
+        _playerView.holder.setFormat(PixelFormat.OPAQUE)
         try {
             _player.setDataSource(this, path)
 //            _player.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)

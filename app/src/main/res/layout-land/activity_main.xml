@@ -35,7 +35,8 @@
         app:layout_constraintBottom_toBottomOf="@+id/video_view"
         app:layout_constraintEnd_toEndOf="@+id/video_view"
         app:layout_constraintStart_toStartOf="@+id/video_view"
-        app:layout_constraintTop_toTopOf="@+id/video_view" />
+        app:layout_constraintTop_toTopOf="@+id/video_view"
+        tools:ignore="NotSibling" />
 
     <View
         android:id="@+id/view"
