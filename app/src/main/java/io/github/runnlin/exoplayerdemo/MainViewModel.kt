@@ -27,7 +27,7 @@ private val TAG = "ZRL|MainViewModel"
 
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
-    val usbMessPath = "/storage/usb0/"
+    var usbMessPath = "/storage/usb0/"
 //    val usbMessPath = "/mnt/media_rw/usb0/"
 
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
@@ -38,7 +38,6 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     var isExternalStorage = false
     var isLogEnable = false
     private var filePath = ""
-    private lateinit var fileOutputStream: FileOutputStream
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
     var currentPosition: Int = -1
@@ -48,14 +47,18 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     fun initLogFile(): Boolean {
         Log.i(TAG, "Ready createLogFile ")
+        if (isLogEnable) return true
 
-        if (File(usbMessPath).exists()) {
+        else if (File(usbMessPath).exists()) {
             filePath = usbMessPath + logFileName
-            fileOutputStream = FileOutputStream(filePath)
             logFile = File(filePath)
             if (!logFile.exists()) {
-                logFile.createNewFile()
-                Log.i(TAG, "createLogFile Success: $filePath")
+                try {
+                    logFile.createNewFile()
+                    Log.i(TAG, "createLogFile Success: $filePath")
+                } catch (e: IOException) {
+                    Log.i(TAG, "createLogFile Failed: $e")
+                }
             }
             if (logFile.canWrite()) {
                 try {
@@ -65,16 +68,15 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
                         StandardOpenOption.APPEND
                     )
                     isLogEnable = true
-                    return true
                 } catch (e: IOException) {
-                    Log.i(TAG, "initLogFile Failed: $e")
+                    Log.i(TAG, "Open logFile Failed: $e")
                 }
             }
         } else {
             Log.i(TAG, "Can't Create LogFile, no messPath ")
             isLogEnable = false
         }
-        return false
+        return isLogEnable
     }
 
     private fun isVideo(type: String?): Boolean {

@@ -1,15 +1,16 @@
 package io.github.runnlin.exoplayerdemo
 
 import android.Manifest
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.media.*
-import android.media.MediaPlayer.OnCompletionListener
 import android.net.Uri
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
@@ -24,7 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -115,11 +116,14 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     private fun initReceiver() {
 
-        val usbReceiver = USBReceiver { usbDiskMountState ->
-            Log.i(TAG, "USB: ${usbDiskMountState}")
+        val usbReceiver = USBReceiver { usbDiskMountState, data ->
+            Log.i(TAG, "USBReceiver state:$usbDiskMountState, data:$data")
             when (usbDiskMountState) {
                 USBReceiver.USB_DISK_MOUNTED -> {
-                    rootPath = _editText.text.toString()
+//                    rootPath = _editText.text.toString()
+                    _editText.setText(data)
+                    rootPath = data
+                    mainViewModel.usbMessPath = data
                     scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
@@ -222,11 +226,12 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
     private fun prepareMediaPlayer(path: Uri) {
         _player.reset()
-        _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
-        _playerView.holder.setFormat(PixelFormat.OPAQUE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
+            _playerView.holder.setFormat(PixelFormat.OPAQUE)
+        }
         try {
             _player.setDataSource(this, path)
 //            _player.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
@@ -365,40 +370,41 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         )
     }
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _isGranted ->
-            if (_isGranted) {
-                scan()
+    var resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // There are no request codes
+            if (mainViewModel.initLogFile()) {
+                startScan()
             } else {
                 Toast.makeText(this@MainActivity, "NO Permission, NO Scan", Toast.LENGTH_SHORT)
                     .show()
             }
         }
+    }
 
     private fun scan() {
-        when (PackageManager.PERMISSION_GRANTED) {
-            ContextCompat.checkSelfPermission(
-                this@MainActivity,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                    !Environment.isExternalStorageManager()
-                ) {
-                    val intent = Intent()
-                    intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                    startActivity(intent)
-                } else {
+//        when (PackageManager.PERMISSION_GRANTED) {
+//            ContextCompat.checkSelfPermission(
+//                this@MainActivity,
+//                Manifest.permission.READ_EXTERNAL_STORAGE
+//            ) -> {
+                if (Environment.isExternalStorageManager()) {
                     if (mainViewModel.initLogFile()) {
                         startScan()
                     }
+                } else {
+                    val intent = Intent()
+                    intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                    intent.data = Uri.parse("package:$packageName")
+                    resultLauncher.launch(intent)
                 }
-            }
-            else -> {
-                requestPermissionLauncher.launch(
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                )
-            }
-        }
+//            }
+//            else -> {
+//                requestPermissionLauncher.launch(
+//                    Manifest.permission.READ_EXTERNAL_STORAGE
+//                )
+//            }
+//        }
     }
 
     private fun startScan() {
