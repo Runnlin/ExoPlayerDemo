@@ -3,6 +3,7 @@ package io.github.runnlin.exoplayerdemo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
@@ -12,7 +13,6 @@ import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.data.MediaRepository
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.lang.Exception
 import java.nio.file.Files
@@ -33,7 +33,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"
     val internalPath = "/storage/self/primary/Movies/"
-    val logFileName = "DesaysvDecodeTesterLog.txt"
+    val LOG_FILE_NAME = "DesaysvDecodeTesterLog.txt"
 
     var isExternalStorage = false
     var isLogEnable = false
@@ -46,21 +46,24 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     private lateinit var logFile: File
 
     fun initLogFile(): Boolean {
-        Log.i(TAG, "Ready createLogFile ")
-        if (isLogEnable) return true
-
-        else if (File(usbMessPath).exists()) {
-            filePath = usbMessPath + logFileName
+        Log.i(
+            TAG,
+            "Environment.getExternalStorageDirectory(): " + Environment.getExternalStorageDirectory()
+        )
+        usbMessPath = Environment.getExternalStorageDirectory().toString()
+        if (isLogEnable)
+            return true
+        else if (File(usbMessPath).isDirectory) {
+            filePath = "$usbMessPath/$LOG_FILE_NAME"
             logFile = File(filePath)
-            if (!logFile.exists()) {
+            if (!logFile.exists() || !logFile.canWrite()) {
                 try {
-                    logFile.createNewFile()
-                    Log.i(TAG, "createLogFile Success: $filePath")
+                    if (logFile.createNewFile())
+                        Log.i(TAG, "createLogFile Success: $filePath")
                 } catch (e: IOException) {
                     Log.i(TAG, "createLogFile Failed: $e")
                 }
-            }
-            if (logFile.canWrite()) {
+            } else {
                 try {
                     Files.write(
                         Paths.get(logFile.toURI()),
@@ -87,23 +90,23 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     }
 
     fun saveLog(content: String) {
-        if (!isExternalStorage && !isLogEnable) return
-        Log.i(TAG, "saveLog: $content")
+        if (isExternalStorage && isLogEnable) {
+            Log.i(TAG, "saveLog: $content")
 
-        val current = LocalDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss.SSSS")
-        val formatted = current.format(formatter)
+            val current = LocalDateTime.now()
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss.SSSS")
+            val formatted = current.format(formatter)
 
-        try {
-            Files.write(
-                Paths.get(logFile.toURI()),
-                "$formatted-->$content\n".toByteArray(),
-                StandardOpenOption.APPEND
-            )
-        } catch (e: IOException) {
-            Log.i(TAG, "saveLog Failed: $e")
+            try {
+                Files.write(
+                    Paths.get(logFile.toURI()),
+                    "$formatted-->$content\n".toByteArray(),
+                    StandardOpenOption.APPEND
+                )
+            } catch (e: IOException) {
+                Log.i(TAG, "saveLog Failed: $e")
+            }
         }
-
     }
 
     fun insert(mediaInfo: MediaInfo) = viewModelScope.launch {
@@ -121,7 +124,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
         repository.deleteAllFileInfo()
     }
 
-     fun whatToString(isError: Boolean, what: Int): String {
+    fun whatToString(isError: Boolean, what: Int): String {
         return if (isError) {
             when (what) {
                 1 -> "MEDIA_ERROR_UNKNOWN"

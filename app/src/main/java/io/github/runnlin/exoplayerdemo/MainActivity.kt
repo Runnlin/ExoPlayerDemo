@@ -1,16 +1,17 @@
 package io.github.runnlin.exoplayerdemo
 
 import android.Manifest
-import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.PixelFormat
-import android.media.*
+import android.media.AudioAttributes
+import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
-import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
@@ -23,12 +24,12 @@ import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.size
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -39,14 +40,14 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
 
 
 private const val TAG = "ZRL|ExoMainActivity"
 private var DELAY_TIME: Long = 20L
 
 @SuppressLint("SdCardPath")
-//private var rootPath = "/sdcard/Movies"
-//private var rootPath = "/mnt/media_rw/usb0/"
 private var rootPath = "/storage/usb0"
 
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
@@ -63,14 +64,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private lateinit var _swLoop: Switch
     private lateinit var _cover: ImageView
 
-    //    private lateinit var _player: ExoPlayer
     private lateinit var _binding: ActivityMainBinding
     private lateinit var mediaListAdapter: MediaListAdapter
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
-    //    private var _infoDialog: CustomDialog? = null
     private lateinit var _scanFile: ScanFileUtil
-    private var playbackPosition = 0
 
     private var isAutoPlay = false // 自动切曲
     private var isFailed = false // 已经失败（onError回调会调用多次，返回不同的Extra）
@@ -90,7 +88,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         val holder = _playerView.holder
         holder.addCallback(this)
-        mainViewModel.initLogFile()
+//        mainViewModel.initLogFile()
+//        mainViewModel.deleteAll()
     }
 
     override fun onStop() {
@@ -109,30 +108,32 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        playbackPosition = _player.currentPosition
+    private fun setPath(isUSB: Boolean) {
+        if (_player.isPlaying) {
+            _player.stop()
+            _player.reset()
+        }
+        mainViewModel.deleteAll()
+        if (isUSB) {
+            mainViewModel.usbMessPath = Environment.getExternalStorageDirectory().toString()
+            rootPath = mainViewModel.usbMessPath
+            _editText.setText(mainViewModel.usbMessPath)
+        } else {
+            _editText.setText(mainViewModel.usbMessPath)
+            mainViewModel.isExternalStorage = false
+        }
     }
 
     private fun initReceiver() {
-
         val usbReceiver = USBReceiver { usbDiskMountState, data ->
             Log.i(TAG, "USBReceiver state:$usbDiskMountState, data:$data")
             when (usbDiskMountState) {
                 USBReceiver.USB_DISK_MOUNTED -> {
-//                    rootPath = _editText.text.toString()
-                    _editText.setText(data)
-                    rootPath = data
-                    mainViewModel.usbMessPath = data
+                    setPath(true)
                     scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
-                    mainViewModel.deleteAll()
-                    mainViewModel.isExternalStorage = false
-                    if (_player.isPlaying) {
-                        _player.stop()
-                        _player.release()
-                    }
+                    setPath(false)
                 }
             }
         }
@@ -144,7 +145,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun getAllFilesInResources() {
-        mainViewModel.deleteAll()
         for (i in 1..10) {
             val resourceID = resources.getIdentifier("a${i}", "raw", packageName)
             if (resourceID != 0) {
@@ -199,17 +199,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         _floatBtn.setOnClickListener {
             Log.i(TAG, "_floatBtn path:$rootPath")
-            rootPath = _editText.text.toString()
+            setPath(true)
             scan()
         }
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
-            mainViewModel.isExternalStorage = false
+            setPath(false)
             getAllFilesInResources()
         }
 
-        _swLoop.setOnCheckedChangeListener { buttonView, isChecked ->
+        _swLoop.setOnCheckedChangeListener { _, isChecked ->
             isAutoPlay = isChecked
         }
     }
@@ -228,17 +228,24 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     private fun prepareMediaPlayer(path: Uri) {
         _player.reset()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
-            _playerView.holder.setFormat(PixelFormat.OPAQUE)
-        }
+        // clear surface view
+        _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
+        _playerView.holder.setFormat(PixelFormat.OPAQUE)
+
         try {
             _player.setDataSource(this, path)
 //            _player.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
             _player.prepareAsync()
 
         } catch (e: IllegalStateException) {
-            e.printStackTrace()
+            Log.e(TAG, "!!!!!!!Play ERROR:${e.printStackTrace()}")
+            myOnError(1)
+        } catch (e: IOException) {
+            Log.e(TAG, "!!!!!!!Play ERROR:${e.printStackTrace()}")
+            myOnError(-1004)
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "!!!!!!!Play ERROR:${e.printStackTrace()}")
+            myOnError(1)
         }
 
         /** PLAYER STATUS **/
@@ -287,25 +294,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 // 确保只调用一次
                 isFailed = true
 
-                Log.wtf(
-                    TAG,
-                    "!!!!!!!ERROR: what:${mainViewModel.whatToString(true, what)} extra:$extra"
-                )
-
-                mainViewModel.currentMediaInfo.isAbility = 2
-                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                mainViewModel.saveLog(
-                    "播放失败: what:${
-                        mainViewModel.whatToString(
-                            true,
-                            what
-                        )
-                    },   extra:${extra}\n\n"
-                )
-                delayPlayNextMedia()
+                myOnError(what, extra)
             }
-            false
-
+            true
         }
 
         _player.setOnCompletionListener {
@@ -317,6 +308,25 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 delayPlayNextMedia()
             }
         }
+    }
+
+    private fun myOnError(what: Int = 0, extra: Int = 0) {
+        Log.wtf(
+            TAG,
+            "!!!!!!!ERROR: what:${mainViewModel.whatToString(true, what)} extra:$extra"
+        )
+
+        mainViewModel.currentMediaInfo.isAbility = 2
+        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+        mainViewModel.saveLog(
+            "播放失败: what:${
+                mainViewModel.whatToString(
+                    true,
+                    what
+                )
+            },   extra:${extra}\n\n"
+        )
+        delayPlayNextMedia()
     }
 
     private fun initScan() {
@@ -331,7 +341,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             override fun scanBegin() {
                 Log.i(TAG, "Scan Begin: $rootPath")
 //                _player.clearMediaItems()
-                mainViewModel.deleteAll()
                 _swLoop.isChecked = false
                 _floatBtn.isEnabled = false
             }
@@ -347,7 +356,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 mainViewModel.currentPosition = 0
 
                 MainScope().launch {
-                    delay(3000)
+                    delay(_recyclerView.size * 100L)
                     playMedia()
                     _floatBtn.isEnabled = true
                 }
@@ -370,24 +379,35 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         )
     }
 
-    var resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            // There are no request codes
-            if (mainViewModel.initLogFile()) {
-                startScan()
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _isGranted ->
+            if (_isGranted) {
+                scan()
             } else {
                 Toast.makeText(this@MainActivity, "NO Permission, NO Scan", Toast.LENGTH_SHORT)
                     .show()
             }
         }
-    }
+
+    var resultLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                // There are no request codes
+//            if (mainViewModel.initLogFile()) {
+                startScan()
+//            }
+            } else {
+                Toast.makeText(this@MainActivity, "NO Permission, NO Scan", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
 
     private fun scan() {
-//        when (PackageManager.PERMISSION_GRANTED) {
-//            ContextCompat.checkSelfPermission(
-//                this@MainActivity,
-//                Manifest.permission.READ_EXTERNAL_STORAGE
-//            ) -> {
+        when (PackageManager.PERMISSION_GRANTED) {
+            ContextCompat.checkSelfPermission(
+                this@MainActivity,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) -> {
                 if (Environment.isExternalStorageManager()) {
                     if (mainViewModel.initLogFile()) {
                         startScan()
@@ -395,25 +415,32 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 } else {
                     val intent = Intent()
                     intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                    intent.data = Uri.parse("package:$packageName")
+//                    intent.data = Uri.parse(packageName)
                     resultLauncher.launch(intent)
                 }
-//            }
-//            else -> {
-//                requestPermissionLauncher.launch(
-//                    Manifest.permission.READ_EXTERNAL_STORAGE
-//                )
-//            }
-//        }
+            }
+            else -> {
+                requestPermissionLauncher.launch(
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                )
+            }
+        }
     }
 
     private fun startScan() {
+        Log.i(TAG, "Start Scan Path: $rootPath")
+        if (!File(rootPath).exists()) {
+            Log.e(TAG, "NO USB disk")
+            Toast.makeText(this@MainActivity, "NO USB disk", Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+        _scanFile.stop()
         mainViewModel.isExternalStorage = true
         if (_player.isPlaying) {
             _player.stop()
+            _player.reset()
         }
-        _scanFile.stop()
-        Log.i(TAG, "Start Scan Path: $rootPath")
         _scanFile.startAsyncScan()
     }
 
@@ -440,11 +467,14 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun playMedia() {
-//        if (_player.isPlaying)
-//            _player.stop()
+        if (_player.isPlaying)
+            _player.stop()
         // 重置失败状态
         isFailed = false
-
+        if (_recyclerView.size == 0 || mainViewModel.allMediaInfo.value?.get(mainViewModel.currentPosition) == null) {
+            _player.reset()
+            return
+        }
         if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
             _recyclerView.smoothScrollToPosition(0)
             mainViewModel.saveLog("本次测试结束\n\n")
@@ -452,8 +482,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             if (isAutoPlay) {
                 mainViewModel.currentPosition = 0
                 playMedia()
+            } else {
+                _player.reset()
             }
-        } else if (mainViewModel.allMediaInfo.value?.get(mainViewModel.currentPosition) != null) {
+        } else {
             mainViewModel.currentMediaInfo =
                 mainViewModel.allMediaInfo.value!![mainViewModel.currentPosition]
             _recyclerView.smoothScrollToPosition(mainViewModel.currentPosition)
@@ -467,54 +499,62 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 )
                 prepareMediaPlayer(Uri.parse(path))
 
-                val cover = mainViewModel.getAlbumImage(path)
+//                val cover = mainViewModel.getAlbumImage(path)
+//
+//                if (null != cover) {
+//                    _playerView.visibility = View.INVISIBLE
+//                    _cover.visibility = View.VISIBLE
+//                    _cover.setImageBitmap(cover)
+//                } else {
+//                    _playerView.visibility = View.VISIBLE
+//                    _cover.visibility = View.INVISIBLE
+//                }
 
-                if (null != cover) {
-                    _playerView.visibility = View.INVISIBLE
-                    _cover.visibility = View.VISIBLE
-                    _cover.setImageBitmap(cover)
-                } else {
-                    _playerView.visibility = View.VISIBLE
-                    _cover.visibility = View.INVISIBLE
+//                if (mainViewModel.currentMediaInfo.path != null) {
+                val mmr = MediaMetadataRetriever()
+                try {
+                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
+                    mainViewModel.saveLog(
+                        "File Path:" + path +
+                                "\nTITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                            ?: "NO TITLE") +
+                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
+                        ))
+                    )
+                } catch (e: FileNotFoundException) {
+                    e.printStackTrace();
+                } catch (e: IOException) {
+                    e.printStackTrace();
+                } catch (e: RuntimeException) {
+                    e.printStackTrace();
+                } finally {
+                    mmr.release()
                 }
-
-                if (mainViewModel.isExternalStorage)
-                    try {
-                        val mmr = MediaMetadataRetriever()
-                        mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-                        mainViewModel.saveLog(
-                            "File Path:" + path +
-                                    "\nTITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                                ?: "NO TITLE") +
-                                    "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                                ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
-                                MediaMetadataRetriever.METADATA_KEY_MIMETYPE
-                            ))
-                        )
-                    } catch (e: RuntimeException) {
-                        Log.e(TAG, e.stackTraceToString())
-                    }
+//                }
             } else {
                 Log.i(
                     TAG,
                     "play stop"
                 )
+                _player.release()
             }
         }
     }
 
     private fun setSurfaceDimensions(player: MediaPlayer, width: Int, height: Int) {
-//        if (width > 0 && height > 0) {
-        val aspectRatio =
-            width.toFloat() / height.toFloat()
-        val surfaceHeight = _playerView.height
-        val surfaceWidth = (surfaceHeight * aspectRatio).toInt()
-        val params =
-            RelativeLayout.LayoutParams(surfaceWidth, surfaceHeight)
-        _playerView.layoutParams = params
-        val holder = _playerView.holder
-        player.setDisplay(holder)
-//        }
+        if (width > 0 && height > 0) {
+            val aspectRatio =
+                width.toFloat() / height.toFloat()
+            val surfaceHeight = _playerView.height
+            val surfaceWidth = (surfaceHeight * aspectRatio).toInt()
+            val params =
+                RelativeLayout.LayoutParams(surfaceWidth, surfaceHeight)
+            _playerView.layoutParams = params
+            val holder = _playerView.holder
+            player.setDisplay(holder)
+        }
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
