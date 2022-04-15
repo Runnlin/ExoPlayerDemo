@@ -48,8 +48,6 @@ private const val TAG = "ZRL|ExoMainActivity"
 private var DELAY_TIME: Long = 20L
 
 @SuppressLint("SdCardPath")
-private var rootPath = "/storage/usb0"
-
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     SurfaceHolder.Callback {
 
@@ -84,7 +82,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         initReceiver()
         initView()
-        initScan()
 
         val holder = _playerView.holder
         holder.addCallback(this)
@@ -114,14 +111,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             _player.reset()
         }
         mainViewModel.deleteAll()
+        initScan(isUSB)
         if (isUSB) {
-            mainViewModel.usbMessPath = Environment.getExternalStorageDirectory().toString()
-            rootPath = mainViewModel.usbMessPath
+//            mainViewModel.usbMessPath = Environment.getExternalStorageDirectory().toString()
+//            rootPath = mainViewModel.usbMessPath
             _editText.setText(mainViewModel.usbMessPath)
         } else {
-            _editText.setText(mainViewModel.usbMessPath)
+            _editText.setText(mainViewModel.internalPath)
             mainViewModel.isExternalStorage = false
+//            getAllFilesInResources()
         }
+        scan()
     }
 
     private fun initReceiver() {
@@ -129,8 +129,13 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             Log.i(TAG, "USBReceiver state:$usbDiskMountState, data:$data")
             when (usbDiskMountState) {
                 USBReceiver.USB_DISK_MOUNTED -> {
+                    // 更新后不需要再通过广播获取u盘路径，可以直接
+                    // Environment.getExternalStorageDirectory().toString()
+                    // TODO text for older system
+                    mainViewModel.usbMessPath = data
                     setPath(true)
-                    scan()
+//                    mainViewModel.initLogFile()
+//                    scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
                     setPath(false)
@@ -198,15 +203,16 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
 
         _floatBtn.setOnClickListener {
-            Log.i(TAG, "_floatBtn path:$rootPath")
+            Log.i(TAG, "_floatBtn load usb")
             setPath(true)
-            scan()
+//            scan()
         }
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
-            setPath(false)
             getAllFilesInResources()
+            setPath(false)
+//            scan()
         }
 
         _swLoop.setOnCheckedChangeListener { _, isChecked ->
@@ -296,7 +302,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
                 myOnError(what, extra)
             }
-            true
+            false
         }
 
         _player.setOnCompletionListener {
@@ -315,7 +321,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             TAG,
             "!!!!!!!ERROR: what:${mainViewModel.whatToString(true, what)} extra:$extra"
         )
-
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
         mainViewModel.saveLog(
@@ -326,20 +331,32 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 )
             },   extra:${extra}\n\n"
         )
-        delayPlayNextMedia()
+        // 当出现IO错误（USB读取失败）时，就没必要再继续尝试播放了
+        if (what == 1) {
+            isAutoPlay = false
+            _swLoop.isChecked = false
+            _player.reset()
+        } else {
+            delayPlayNextMedia()
+        }
+
     }
 
-    private fun initScan() {
-        _scanFile = ScanFileUtil(rootPath)
+    private fun initScan(isUsb: Boolean) {
+        _scanFile = if (isUsb)
+            ScanFileUtil(mainViewModel.usbMessPath)
+        else
+            ScanFileUtil(mainViewModel.internalPath)
         _scanFile.setCallBackFilter(
             ScanFileUtil.FileFilterBuilder().apply {
-                scanVideoFiles()
+                onlyScanFile()
                 scanMusicFiles()
+                scanVideoFiles()
             }.build()
         )
         _scanFile.setScanFileListener(object : ScanFileUtil.ScanFileListener {
             override fun scanBegin() {
-                Log.i(TAG, "Scan Begin: $rootPath")
+                Log.i(TAG, "Scan Begin: ${mainViewModel.usbMessPath}")
 //                _player.clearMediaItems()
                 _swLoop.isChecked = false
                 _floatBtn.isEnabled = false
@@ -428,8 +445,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun startScan() {
-        Log.i(TAG, "Start Scan Path: $rootPath")
-        if (!File(rootPath).exists()) {
+        Log.i(TAG, "Start Scan Path: ${mainViewModel.usbMessPath}")
+        if (!File(mainViewModel.usbMessPath).exists()) {
             Log.e(TAG, "NO USB disk")
             Toast.makeText(this@MainActivity, "NO USB disk", Toast.LENGTH_SHORT)
                 .show()
@@ -471,7 +488,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             _player.stop()
         // 重置失败状态
         isFailed = false
-        if (_recyclerView.size == 0 || mainViewModel.allMediaInfo.value?.get(mainViewModel.currentPosition) == null) {
+        if (_recyclerView.size == 0) {
             _player.reset()
             return
         }

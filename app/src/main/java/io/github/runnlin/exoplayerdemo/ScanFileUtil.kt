@@ -1,6 +1,7 @@
 package io.github.runnlin.exoplayerdemo
 
 import android.os.Environment
+import android.util.Log
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FilenameFilter
@@ -612,6 +613,7 @@ class ScanFileUtil {
             mFilseFilterSet.add("mpeg")
             mFilseFilterSet.add("mpg")
             mFilseFilterSet.add("mov")
+            Log.i("ScanFileUtil", "mFilseFilterSet: $mFilseFilterSet")
         }
 
         /**
@@ -683,9 +685,15 @@ class ScanFileUtil {
                 //获取文件后缀
                 val suffix: String =
                     name.substring(name.indexOfLast { it == '.' } + 1, name.length)
-                        .toLowerCase(Locale.getDefault())
+                        .lowercase(Locale.getDefault())
+                Log.i("ScanFileUtil", "suffix name: $name")
                 //return 是否包含这个文件
-                mFilseFilterSet.contains(suffix)
+                if (mFilseFilterSet.contains(suffix)) {
+                    Log.i("ScanFileUtil", "suffix: $suffix")
+                    true
+                } else {
+                    false
+                }
             } else {
                 //如果没有设置这个规则，全部默认为true 全部通过
                 true
