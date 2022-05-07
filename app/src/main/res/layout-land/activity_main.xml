@@ -13,30 +13,44 @@
         android:gravity="center"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/listLayout"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/id3infoFrame"
         app:layout_constraintTop_toTopOf="parent">
 
         <SurfaceView
             android:id="@+id/video_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:gravity="center"
             app:played_color="@color/black"
             app:unplayed_color="@color/black"
             tools:ignore="NotSibling" />
+
+        <ImageView
+            android:id="@+id/ivCover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="invisible"
+            android:scaleType="fitCenter"
+            tools:ignore="NotSibling" />
+
     </RelativeLayout>
 
+    <RelativeLayout
+        android:id="@+id/id3infoFrame"
+        android:layout_width="288dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentTop="true"
+        android:background="@color/cardview_dark_background"
+        tools:ignore="MissingConstraints">
 
-    <ImageView
-        android:id="@+id/ivCover"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="invisible"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="@+id/video_view"
-        app:layout_constraintEnd_toEndOf="@+id/video_view"
-        app:layout_constraintStart_toStartOf="@+id/video_view"
-        app:layout_constraintTop_toTopOf="@+id/video_view"
-        tools:ignore="NotSibling" />
+        <TextView
+            android:id="@+id/id3Info"
+            android:textSize="24sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="id3Info"
+            android:textColor="@color/white" />
+    </RelativeLayout>
 
     <View
         android:id="@+id/view"

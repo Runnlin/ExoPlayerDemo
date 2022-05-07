@@ -11,7 +11,6 @@ import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
@@ -55,6 +54,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private lateinit var _floatBtn: ExtendedFloatingActionButton
     private lateinit var _floatBtnLocal: ExtendedFloatingActionButton
     private lateinit var _editText: EditText
+    private lateinit var _id3Info: TextView
     private lateinit var _playerView: SurfaceView
     private lateinit var _player: MediaPlayer
 
@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
     }
 
-    private fun setPath(isUSB: Boolean) {
+    private fun setPathAndScan(isUSB: Boolean) {
         if (_player.isPlaying) {
             _player.stop()
             _player.reset()
@@ -133,12 +133,12 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     // Environment.getExternalStorageDirectory().toString()
                     // TODO text for older system
                     mainViewModel.usbMessPath = data
-                    setPath(true)
+                    setPathAndScan(true)
 //                    mainViewModel.initLogFile()
 //                    scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
-                    setPath(false)
+                    setPathAndScan(false)
                 }
             }
         }
@@ -183,6 +183,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _floatBtn = _binding.floatBtn
         _floatBtnLocal = _binding.floatBtnLocal
         _editText = _binding.textInputEditText
+        _id3Info = _binding.id3Info
         _swLoop = _binding.swLoop
         _cover = _binding.ivCover
         builderForInfoDialog = CustomDialog.Builder(this)
@@ -204,14 +205,14 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         _floatBtn.setOnClickListener {
             Log.i(TAG, "_floatBtn load usb")
-            setPath(true)
+            setPathAndScan(true)
 //            scan()
         }
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
-            setPath(false)
-            getAllFilesInResources()
+            setPathAndScan(false)
+//            getAllFilesInResources()
 //            scan()
         }
 
@@ -515,30 +516,32 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 )
                 prepareMediaPlayer(Uri.parse(path))
 
-//                val cover = mainViewModel.getAlbumImage(path)
-//
-//                if (null != cover) {
-//                    _playerView.visibility = View.INVISIBLE
-//                    _cover.visibility = View.VISIBLE
-//                    _cover.setImageBitmap(cover)
-//                } else {
-//                    _playerView.visibility = View.VISIBLE
-//                    _cover.visibility = View.INVISIBLE
-//                }
+                val cover = mainViewModel.getAlbumImage(path)
+
+                if (null != cover) {
+                    _playerView.visibility = View.INVISIBLE
+                    _cover.visibility = View.VISIBLE
+                    _cover.setImageBitmap(cover)
+                } else {
+                    _playerView.visibility = View.VISIBLE
+                    _cover.visibility = View.INVISIBLE
+                }
 
 //                if (mainViewModel.currentMediaInfo.path != null) {
                 val mmr = MediaMetadataRetriever()
                 try {
                     mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-                    mainViewModel.saveLog(
-                        "File Path:" + path +
-                                "\nTITLE:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                            ?: "NO TITLE") +
-                                "   ALBUM:" + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                            ?: "NO ALBUM") + "  miniType:" + (mmr.extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_MIMETYPE
-                        ))
-                    )
+                    val id3Info = "File Path:" + path +
+                            "\n\nTITLE:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                        ?: "NO TITLE") +
+                            "\nALBUM:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                        ?: "NO ALBUM") +
+                            "\nArtist:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                        ?: "NO ARTIST") +
+                            "\nminiType:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+                        ?: "NO miniType") + ("\n\n\n")
+                    mainViewModel.saveLog(id3Info)
+                    _id3Info.text = id3Info
                 } catch (e: FileNotFoundException) {
                     e.printStackTrace();
                 } catch (e: IOException) {
