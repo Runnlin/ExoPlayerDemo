@@ -337,6 +337,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             TAG,
             "!!!!!!!ERROR: what:${mainViewModel.whatToString(true, what)} extra:$extra"
         )
+        Toast.makeText(
+            this@MainActivity,
+            "Play ERROR: ${mainViewModel.whatToString(true, what)}",
+            Toast.LENGTH_SHORT
+        ).show()
         mainViewModel.currentMediaInfo.isAbility = 2
         mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
         mainViewModel.saveLog(
@@ -373,6 +378,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _scanFile.setScanFileListener(object : ScanFileUtil.ScanFileListener {
             override fun scanBegin() {
                 Log.i(TAG, "Scan Begin: ${mainViewModel.usbMessPath}")
+                Toast.makeText(
+                    this@MainActivity,
+                    "Scan Start",
+                    Toast.LENGTH_SHORT
+                ).show()
 //                _player.clearMediaItems()
                 _swLoop.isChecked = false
                 _floatBtn.isEnabled = false
@@ -380,11 +390,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
             override fun scanComplete(timeConsuming: Long) {
 //                Log.i(TAG, "Scan Done, files: ${mainViewModel.allMediaInfo.value}")
-//                Toast.makeText(
-//                    this@MainActivity,
-//                    "Scan Done, consumed: $timeConsuming",
-//                    Toast.LENGTH_SHORT
-//                ).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    "Scan Done, consumed: $timeConsuming",
+                    Toast.LENGTH_SHORT
+                ).show()
                 _swLoop.isChecked = true
                 mainViewModel.currentPosition = 0
 
