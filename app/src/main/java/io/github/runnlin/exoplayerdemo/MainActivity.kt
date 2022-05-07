@@ -46,7 +46,7 @@ import kotlin.math.log
 
 
 private const val TAG = "ZRL|ExoMainActivity"
-private var DELAY_TIME: Long = 20L
+private var DELAY_TIME: Long = 20 * 1000L
 
 @SuppressLint("SdCardPath")
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
@@ -263,44 +263,40 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         /** PLAYER STATUS **/
         _player.setOnPreparedListener {
             _player.start()
-            if (_player.isPlaying) {
 
-                _progress.max = _player.duration
+            _progress.max = _player.duration
 
-                mainViewModel.currentMediaInfo.isAbility = 3
-                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+            mainViewModel.currentMediaInfo.isAbility = 3
+            mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
-                Log.i(TAG, "!!!!!!!isPlaying:\n${it.metrics}")
-//                if (isAutoPlay) {
-                val duration = _player.duration
-                val delayTime =
-                    if (duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
-                object : CountDownTimer(duration.toLong(), 50) {
-                    override fun onTick(millisUntilFinished: Long) {
-                        if (duration - millisUntilFinished < delayTime) {
-                            if (!isAutoPlay)
-                                this.cancel()
-                        }
-                        if (mainViewModel.currentMediaInfo.isAbility == 2 ||
-                            !_player.isPlaying
-                        ) {
-                            this.cancel()
-                        }
-                        Log.i(TAG, "millisUntilFinished: ${duration - millisUntilFinished}")
-                        _progress.progress = duration - millisUntilFinished.toInt()
+            Log.i(TAG, "!!!!!!!isPlaying:\n${it.metrics}")
+            val duration = _player.duration.toLong()
+            val delayTime =
+                if (duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
+            object : CountDownTimer(duration, 50) {
+                override fun onTick(millisUntilFinished: Long) {
+                    if (millisUntilFinished < (duration - delayTime) && isAutoPlay) {
+                        this.cancel()
+                        this.onFinish()
                     }
-
-                    override fun onFinish() {
-                        _progress.progress = 0
-                        mainViewModel.currentMediaInfo.isAbility = 1
-                        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                        mainViewModel.saveLog("播放成功，自动切曲\n\n")
-                        Log.i(TAG, "播放成功，自动切曲")
-                        delayPlayNextMedia()
+                    if (mainViewModel.currentMediaInfo.isAbility == 2 ||
+                        !_player.isPlaying
+                    ) {
+                        this.cancel()
                     }
-                }.start()
-//                }
-            }
+                    Log.i(TAG, "millisUntilFinished: ${duration - millisUntilFinished}")
+                    _progress.progress = (duration - millisUntilFinished).toInt()
+                }
+
+                override fun onFinish() {
+                    _progress.progress = 0
+                    mainViewModel.currentMediaInfo.isAbility = 1
+                    mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                    mainViewModel.saveLog("播放成功，自动切曲\n\n")
+                    Log.i(TAG, "播放成功，自动切曲")
+                    delayPlayNextMedia()
+                }
+            }.start()
         }
 
         _player.setOnVideoSizeChangedListener { player, width, height ->
