@@ -6,82 +6,97 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <RelativeLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#000"
         android:gravity="center"
-        app:layout_constraintBottom_toTopOf="@+id/listLayout"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/listLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <SurfaceView
-            android:id="@+id/video_view"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/surface_view_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:played_color="@color/black"
-            app:unplayed_color="@color/black"
-            tools:ignore="NotSibling" />
-    </RelativeLayout>
+            android:gravity="center">
 
-    <FrameLayout
-        android:layout_width="200dp"
-        android:layout_height="214dp"
-        android:layout_alignParentTop="true"
-        android:background="@color/cardview_dark_background"
-        tools:ignore="MissingConstraints">
+            <SurfaceView
+                android:id="@+id/video_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:played_color="@color/black"
+                app:unplayed_color="@color/black" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <TextView
-            android:id="@+id/id3Info"
-            android:layout_width="match_parent"
+        <ImageView
+            android:id="@+id/ivCover"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scaleType="fitCenter"
+            android:visibility="invisible"
+            tools:ignore="MissingConstraints,NotSibling" />
+
+        <RelativeLayout
+            android:id="@+id/id3infoFrame"
+            android:layout_width="288dp"
             android:layout_height="match_parent"
-            android:text="id3Info"
-            android:textColor="@color/white" />
-    </FrameLayout>
+            android:layout_alignParentTop="true"
+            android:alpha="0.8"
+            android:background="@color/cardview_dark_background"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:ignore="MissingConstraints">
 
-    <ImageView
-        android:id="@+id/ivCover"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="invisible"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="@+id/video_view"
-        app:layout_constraintEnd_toEndOf="@+id/video_view"
-        app:layout_constraintStart_toStartOf="@+id/video_view"
-        app:layout_constraintTop_toTopOf="@+id/video_view"
-        tools:ignore="NotSibling" />
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/id3Info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="id3Info"
+                android:textColor="@color/white"
+                android:textSize="24sp" />
+        </RelativeLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/cardview_shadow_start_color"
+            app:layout_constraintBottom_toBottomOf="@+id/surface_view_layout">
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/progress"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                tools:ignore="MissingConstraints" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <View
-        android:id="@+id/view2"
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
+        android:id="@+id/view"
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
         android:background="@color/gray"
-        app:layout_constraintBottom_toBottomOf="@+id/video_view"
-        app:layout_constraintTop_toBottomOf="@+id/video_view"
-        tools:ignore="MissingConstraints,NotSibling"
-        tools:layout_editor_absoluteX="41dp" />
+        app:layout_constraintEnd_toStartOf="@+id/listLayout"
+        tools:ignore="MissingConstraints" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/listLayout"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:orientation="vertical"
+        android:layout_width="368dp"
+        android:layout_height="match_parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:ignore="MissingConstraints">
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <EditText
+        <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/textInputEditText"
             android:layout_width="0dp"
             android:layout_height="60dp"
-            android:text="/storage/usb0/"
             android:layout_marginEnd="10dp"
+            android:text="/storage/usb0/"
             app:layout_constraintEnd_toStartOf="@+id/swLoop"
             app:layout_constraintStart_toStartOf="parent"
             tools:ignore="MissingConstraints" />
 
-        <Switch
+        <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/swLoop"
             android:layout_width="wrap_content"
             android:layout_height="60dp"
@@ -92,8 +107,9 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_playlist"
             android:layout_width="0dp"
-            android:layout_height="200dp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_height="0dp"
+            android:paddingBottom="8dp"
+            app:layout_constraintBottom_toTopOf="@+id/float_btn"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textInputEditText" />
@@ -102,13 +118,14 @@
             android:id="@+id/float_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="10dp"
+            android:layout_marginStart="10dp"
             android:layout_marginBottom="10dp"
             android:contentDescription="@string/refresh_list"
-            android:src="@drawable/ic_refresh"
+            android:text="@string/refresh"
             app:backgroundTint="@android:color/holo_orange_light"
-            app:layout_constraintBottom_toTopOf="@+id/float_btn_local"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:icon="@drawable/ic_refresh"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             tools:ignore="MissingConstraints" />
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -118,11 +135,13 @@
             android:layout_marginEnd="10dp"
             android:layout_marginBottom="10dp"
             android:contentDescription="@string/gainLocalList"
-            android:src="@drawable/ic_refresh"
+            android:text="@string/loadLocalList"
             app:backgroundTint="@android:color/holo_blue_bright"
+            app:icon="@drawable/ic_refresh"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             tools:ignore="MissingConstraints" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 

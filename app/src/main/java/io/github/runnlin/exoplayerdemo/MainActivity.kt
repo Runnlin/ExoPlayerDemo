@@ -16,10 +16,7 @@ import android.os.CountDownTimer
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
-import android.view.Surface
-import android.view.SurfaceHolder
-import android.view.SurfaceView
-import android.view.View
+import android.view.*
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -32,7 +29,10 @@ import androidx.core.view.size
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import kotlinx.coroutines.MainScope
@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.*
+import kotlin.math.log
 
 
 private const val TAG = "ZRL|ExoMainActivity"
@@ -54,12 +56,13 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private lateinit var _floatBtn: ExtendedFloatingActionButton
     private lateinit var _floatBtnLocal: ExtendedFloatingActionButton
     private lateinit var _editText: EditText
+    private lateinit var _progress: LinearProgressIndicator
     private lateinit var _id3Info: TextView
     private lateinit var _playerView: SurfaceView
     private lateinit var _player: MediaPlayer
 
     @SuppressLint("UseSwitchCompatOrMaterialCode")
-    private lateinit var _swLoop: Switch
+    private lateinit var _swLoop: SwitchMaterial
     private lateinit var _cover: ImageView
 
     private lateinit var _binding: ActivityMainBinding
@@ -87,6 +90,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         holder.addCallback(this)
 //        mainViewModel.initLogFile()
 //        mainViewModel.deleteAll()
+        //应用运行时，保持屏幕高亮，不锁屏
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     override fun onStop() {
@@ -131,7 +136,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 USBReceiver.USB_DISK_MOUNTED -> {
                     // 更新后不需要再通过广播获取u盘路径，可以直接
                     // Environment.getExternalStorageDirectory().toString()
-                    // TODO text for older system
                     mainViewModel.usbMessPath = data
                     setPathAndScan(true)
 //                    mainViewModel.initLogFile()
@@ -182,6 +186,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _playerView = _binding.videoView
         _floatBtn = _binding.floatBtn
         _floatBtnLocal = _binding.floatBtnLocal
+        _progress = _binding.progress
         _editText = _binding.textInputEditText
         _id3Info = _binding.id3Info
         _swLoop = _binding.swLoop
@@ -260,31 +265,41 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             _player.start()
             if (_player.isPlaying) {
 
+                _progress.max = _player.duration
+
                 mainViewModel.currentMediaInfo.isAbility = 3
                 mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
                 Log.i(TAG, "!!!!!!!isPlaying:\n${it.metrics}")
-                if (isAutoPlay) {
-                    val delayTime =
-                        if (_player.duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
-                    object : CountDownTimer(delayTime * 1000L, 100) {
-                        override fun onTick(millisUntilFinished: Long) {
-                            if (mainViewModel.currentMediaInfo.isAbility == 2 ||
-                                !isAutoPlay ||
-                                !_player.isPlaying
-                            )
+//                if (isAutoPlay) {
+                val duration = _player.duration
+                val delayTime =
+                    if (duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
+                object : CountDownTimer(duration.toLong(), 50) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        if (duration - millisUntilFinished < delayTime) {
+                            if (!isAutoPlay)
                                 this.cancel()
                         }
-
-                        override fun onFinish() {
-                            mainViewModel.currentMediaInfo.isAbility = 1
-                            mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                            mainViewModel.saveLog("播放成功，自动切曲\n\n")
-                            Log.i(TAG, "播放成功，自动切曲")
-                            delayPlayNextMedia()
+                        if (mainViewModel.currentMediaInfo.isAbility == 2 ||
+                            !_player.isPlaying
+                        ) {
+                            this.cancel()
                         }
-                    }.start()
-                }
+                        Log.i(TAG, "millisUntilFinished: ${duration - millisUntilFinished}")
+                        _progress.progress = duration - millisUntilFinished.toInt()
+                    }
+
+                    override fun onFinish() {
+                        _progress.progress = 0
+                        mainViewModel.currentMediaInfo.isAbility = 1
+                        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                        mainViewModel.saveLog("播放成功，自动切曲\n\n")
+                        Log.i(TAG, "播放成功，自动切曲")
+                        delayPlayNextMedia()
+                    }
+                }.start()
+//                }
             }
         }
 
@@ -333,7 +348,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             },   extra:${extra}\n\n"
         )
         // 当出现IO错误（USB读取失败）时，就没必要再继续尝试播放了
-        if (what == 1) {
+        if (what == -1004) {
             isAutoPlay = false
             _swLoop.isChecked = false
             _player.reset()
@@ -557,7 +572,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     TAG,
                     "play stop"
                 )
-                _player.release()
+                _player.stop()
+                _player.reset()
             }
         }
     }
