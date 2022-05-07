@@ -210,8 +210,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
-            getAllFilesInResources()
             setPath(false)
+            getAllFilesInResources()
 //            scan()
         }
 
@@ -493,14 +493,13 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             return
         }
         if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
-            _recyclerView.smoothScrollToPosition(0)
-            mainViewModel.saveLog("本次测试结束\n\n")
-
-            if (isAutoPlay) {
+            if (isAutoPlay && !isFailed) {
                 mainViewModel.currentPosition = 0
                 playMedia()
             } else {
+                _player.stop()
                 _player.reset()
+                mainViewModel.saveLog("本次测试结束\n\n")
             }
         } else {
             mainViewModel.currentMediaInfo =

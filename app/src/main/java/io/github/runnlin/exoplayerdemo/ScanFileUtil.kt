@@ -613,7 +613,6 @@ class ScanFileUtil {
             mFilseFilterSet.add("mpeg")
             mFilseFilterSet.add("mpg")
             mFilseFilterSet.add("mov")
-            Log.i("ScanFileUtil", "mFilseFilterSet: $mFilseFilterSet")
         }
 
         /**
@@ -622,6 +621,7 @@ class ScanFileUtil {
          */
         fun scanMusicFiles() {
             mFilseFilterSet.add("mp3")
+            mFilseFilterSet.add("mp2")
             mFilseFilterSet.add("ogg")
             mFilseFilterSet.add("aac")
             mFilseFilterSet.add("ape")
