@@ -534,16 +534,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 )
                 prepareMediaPlayer(Uri.parse(path))
 
-                val cover = mainViewModel.getAlbumImage(path)
-
-                if (null != cover) {
-                    _playerView.visibility = View.INVISIBLE
-                    _cover.visibility = View.VISIBLE
-                    _cover.setImageBitmap(cover)
-                } else {
-                    _playerView.visibility = View.VISIBLE
-                    _cover.visibility = View.INVISIBLE
-                }
 
 //                if (mainViewModel.currentMediaInfo.path != null) {
                 val mmr = MediaMetadataRetriever()
@@ -568,6 +558,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                             ) + ("\n\n\n")
                     mainViewModel.saveLog(id3Info)
                     _id3Info.text = id3Info
+
+                    val cover = mainViewModel.getAlbumImage(mmr)
+                    if (null != cover) {
+                        Log.i(TAG, "get cover!")
+                        _playerView.visibility = View.INVISIBLE
+                        _cover.visibility = View.VISIBLE
+                        _cover.setImageBitmap(cover)
+                    } else {
+                        _playerView.visibility = View.VISIBLE
+                        _cover.visibility = View.INVISIBLE
+                    }
 //                     = encodedInfoBytes.decodeToString()
                 } catch (e: FileNotFoundException) {
                     e.printStackTrace();
@@ -606,6 +607,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     override fun surfaceCreated(holder: SurfaceHolder) {
         val surface = holder.surface
+        Log.i(TAG, "surfaceCreated")
         setupMediaPlayer(surface)
     }
 

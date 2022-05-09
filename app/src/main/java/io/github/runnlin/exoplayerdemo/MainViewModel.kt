@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.data.MediaRepository
 import kotlinx.coroutines.launch
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.IOException
 import java.lang.Exception
@@ -152,14 +153,16 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
         }
     }
 
-    fun getAlbumImage(path: String): Bitmap? {
+    fun getAlbumImage(mmr: MediaMetadataRetriever): Bitmap? {
         if (!isVideo(currentMediaInfo.type)) {
             try {
-
-                val mmr = MediaMetadataRetriever()
-                mmr.setDataSource(path)
                 val data = mmr.embeddedPicture
-                return if (data != null) BitmapFactory.decodeByteArray(data, 0, data.size) else null
+                Log.i(TAG, "data!${data?.size ?: -1}]")
+                return if (data != null) {
+                    val bis = ByteArrayInputStream(data)
+                    Log.i(TAG, "get mmr cover!$bis")
+                    BitmapFactory.decodeStream(bis)
+                } else null
             } catch (e: Exception) {
                 e.printStackTrace()
             }
