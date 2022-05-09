@@ -43,8 +43,9 @@
                 android:id="@+id/id3Info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="id3Info"
                 android:layout_alignParentTop="true"
+
+                android:text="id3Info"
                 android:textColor="@color/white"
                 android:textSize="24sp" />
 

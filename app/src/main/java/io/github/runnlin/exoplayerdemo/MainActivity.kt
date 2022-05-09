@@ -29,7 +29,6 @@ import androidx.core.view.size
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -41,8 +40,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
-import java.util.*
-import kotlin.math.log
+import java.nio.charset.Charset
 
 
 private const val TAG = "ZRL|ExoMainActivity"
@@ -284,7 +282,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     ) {
                         this.cancel()
                     }
-                    Log.i(TAG, "millisUntilFinished: ${duration - millisUntilFinished}")
                     _progress.progress = (duration - millisUntilFinished).toInt()
                 }
 
@@ -553,16 +550,25 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 try {
                     mmr.setDataSource(mainViewModel.currentMediaInfo.path)
                     val id3Info = "File Path:" + path +
-                            "\n\nTITLE:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                        ?: "NO TITLE") +
-                            "\nALBUM:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                        ?: "NO ALBUM") +
-                            "\nArtist:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                        ?: "NO ARTIST") +
-                            "\nminiType:   " + (mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
-                        ?: "NO miniType") + ("\n\n\n")
+                            "\n\nTITLE:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                                ?: "NO TITLE"
+                            ).toUTF8String() +
+                            "\nALBUM:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                                ?: "NO ALBUM"
+                            ).toUTF8String() +
+                            "\nArtist:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                                ?: "NO ARTIST"
+                            ).toUTF8String() +
+                            "\nminiType:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+                                ?: "NO miniType"
+                            ) + ("\n\n\n")
                     mainViewModel.saveLog(id3Info)
                     _id3Info.text = id3Info
+//                     = encodedInfoBytes.decodeToString()
                 } catch (e: FileNotFoundException) {
                     e.printStackTrace();
                 } catch (e: IOException) {
@@ -607,6 +613,27 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
+    }
+
+    /*
+    转换特殊编码String
+     */
+    private fun String.toUTF8String(): String {
+        val ins = intern().byteInputStream()
+        val head = ByteArray(3)
+        ins.read(head)
+        Log.i(TAG, "code:${head[0]},${head[1]}")
+        return when {
+            head[0].toInt() == -28 && head[1].toInt() == -92 -> String(
+                intern().toByteArray(Charsets.UTF_16),
+                Charset.defaultCharset()
+            ).substring(2)
+            // unicode
+            head[0].toInt() == -2 && head[1].toInt() == -1 -> intern()
+            // utf8
+            head[0].toInt() == -17 && head[1].toInt() == -69 && head[2].toInt() == -65 -> intern()
+            else -> intern()
+        }
     }
 
     override fun onDestroy() {
