@@ -233,11 +233,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .build()
             )
+            setDisplay(_playerView.holder)
         }
     }
 
     private fun prepareMediaPlayer(path: Uri) {
-        _player.reset()
         // clear surface view
         _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
         _playerView.holder.setFormat(PixelFormat.OPAQUE)
@@ -503,12 +503,13 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun playMedia() {
-        if (_player.isPlaying)
-            _player.stop()
+//        _player.stop()
+        _player.setDisplay(null)
+        _player.reset()
         // 重置失败状态
         isFailed = false
-        if (_recyclerView.size == 0) {
-            _player.reset()
+        if (mainViewModel.allMediaInfo.value?.size ?: -1 == -1) {
+//            _player.reset()
             return
         }
         if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
@@ -533,7 +534,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     "start_play: ${mainViewModel.currentPosition}, path: $path"
                 )
                 prepareMediaPlayer(Uri.parse(path))
-
 
 //                if (mainViewModel.currentMediaInfo.path != null) {
                 val mmr = MediaMetadataRetriever()
@@ -562,12 +562,12 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     val cover = mainViewModel.getAlbumImage(mmr)
                     if (null != cover) {
                         Log.i(TAG, "get cover!")
-                        _playerView.visibility = View.INVISIBLE
+                        _playerView.visibility = View.GONE
                         _cover.visibility = View.VISIBLE
                         _cover.setImageBitmap(cover)
                     } else {
                         _playerView.visibility = View.VISIBLE
-                        _cover.visibility = View.INVISIBLE
+                        _cover.visibility = View.GONE
                     }
 //                     = encodedInfoBytes.decodeToString()
                 } catch (e: FileNotFoundException) {
@@ -640,8 +640,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     override fun onDestroy() {
         super.onDestroy()
-        if (_player.isPlaying)
-            _player.stop()
+        _player.reset()
         _player.release()
     }
 }

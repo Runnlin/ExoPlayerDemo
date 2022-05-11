@@ -157,7 +157,6 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
         if (!isVideo(currentMediaInfo.type)) {
             try {
                 val data = mmr.embeddedPicture
-                Log.i(TAG, "data!${data?.size ?: -1}]")
                 return if (data != null) {
                     val bis = ByteArrayInputStream(data)
                     Log.i(TAG, "get mmr cover!$bis")
