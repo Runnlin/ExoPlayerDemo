@@ -151,33 +151,33 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         registerReceiver(usbReceiver, usbDeviceStateFilter)
     }
 
-    private fun getAllFilesInResources() {
-        for (i in 1..10) {
-            val resourceID = resources.getIdentifier("a${i}", "raw", packageName)
-            if (resourceID != 0) {
-                var resourceName = resources.getResourceEntryName(resourceID)
-                resourceName = resourceName.substring(
-                    resourceName.lastIndexOf(
-                        "/"
-                    ) + 1
-                )
-                Log.i(TAG, resourceName)
-                mainViewModel.insert(
-                    MediaInfo(
-                        uuid = "$resourceID",
-                        title = resourceName,
-                        type =
-                        resourceName.substring(
-                            resourceName.lastIndexOf(
-                                "."
-                            ) + 1
-                        ),
-                        path = "android.resource://$packageName/${resourceID}"
-                    )
-                )
-            }
-        }
-    }
+//    private fun getAllFilesInResources() {
+//        for (i in 1..10) {
+//            val resourceID = resources.getIdentifier("a${i}", "raw", packageName)
+//            if (resourceID != 0) {
+//                var resourceName = resources.getResourceEntryName(resourceID)
+//                resourceName = resourceName.substring(
+//                    resourceName.lastIndexOf(
+//                        "/"
+//                    ) + 1
+//                )
+//                Log.i(TAG, resourceName)
+//                mainViewModel.insert(
+//                    MediaInfo(
+//                        uuid = "$resourceID",
+//                        title = resourceName,
+//                        type =
+//                        resourceName.substring(
+//                            resourceName.lastIndexOf(
+//                                "."
+//                            ) + 1
+//                        ),
+//                        path = "android.resource://$packageName/${resourceID}"
+//                    )
+//                )
+//            }
+//        }
+//    }
 
     private fun initView() {
         _recyclerView = _binding.rvPlaylist
@@ -271,7 +271,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             val duration = _player.duration.toLong()
             val delayTime =
                 if (duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
-            object : CountDownTimer(duration, 50) {
+            object : CountDownTimer(duration, 15) {
                 override fun onTick(millisUntilFinished: Long) {
                     if (millisUntilFinished < (duration - delayTime) && isAutoPlay) {
                         this.cancel()
@@ -300,7 +300,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             setSurfaceDimensions(player, width, height)
         }
 
-        _player.setOnBufferingUpdateListener { mp, percent ->
+        _player.setOnBufferingUpdateListener { _, _ ->
             Log.i(TAG, "!!!!!!!isBuffering")
         }
 
@@ -508,11 +508,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _player.reset()
         // 重置失败状态
         isFailed = false
-        if (mainViewModel.allMediaInfo.value?.size ?: -1 == -1) {
+        if ((mainViewModel.allMediaInfo.value?.size ?: -1) == -1) {
 //            _player.reset()
             return
         }
-        if (mainViewModel.currentPosition >= mainViewModel.allMediaInfo.value?.size ?: -1) {
+        if (mainViewModel.currentPosition >= (mainViewModel.allMediaInfo.value?.size ?: -1)) {
             if (isAutoPlay && !isFailed) {
                 mainViewModel.currentPosition = 0
                 playMedia()
@@ -551,11 +551,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                             "\nArtist:   " + (
                             mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                                 ?: "NO ARTIST"
-                            ).toUTF8String() +
-                            "\nminiType:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
-                                ?: "NO miniType"
-                            ) + ("\n\n\n")
+                            ).toUTF8String() + ("\n\n\n")
                     mainViewModel.saveLog(id3Info)
                     _id3Info.text = id3Info
 

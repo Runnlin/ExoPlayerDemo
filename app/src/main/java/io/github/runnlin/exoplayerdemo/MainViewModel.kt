@@ -24,7 +24,7 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 
-private val TAG = "ZRL|MainViewModel"
+private const val TAG = "ZRL|MainViewModel"
 
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
@@ -136,7 +136,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
                 -1010 -> "MEDIA_ERROR_UNSUPPORTED"
                 -110 -> "MEDIA_ERROR_TIMED_OUT"
                 -2147483648 -> "MEDIA_ERROR_SYSTEM"
-                else -> "UNKONW ERROR"
+                else -> "UNKNOWN ERROR"
             }
         } else {
             when (what) {
@@ -176,6 +176,6 @@ class MediaViewModelFactory(private val repository: MediaRepository) : ViewModel
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             return MainViewModel(repository) as T
         }
-        throw IllegalArgumentException("Unknow ViewModel class")
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
