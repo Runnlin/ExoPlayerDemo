@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Desaysv播放测试</string>
     <string name="refresh_list">Refresh List</string>
-    <string name="refresh">Load path</string>
+    <string name="refresh">Load UDisk</string>
     <string name="gainLocalList">Load local</string>
     <string name="loadLocalList">Load local</string>
 </resources>

@@ -49,9 +49,9 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     fun initLogFile(): Boolean {
         Log.i(
             TAG,
-            "Environment.getExternalStorageDirectory(): " + Environment.getExternalStorageDirectory()
+            "Environment.getExternalStorageDirectory(): " + usbMessPath
         )
-        usbMessPath = Environment.getExternalStorageDirectory().path
+//        usbMessPath = Environment.getExternalStorageDirectory().path
         if (isLogEnable)
             return true
         else if (File(usbMessPath).isDirectory) {

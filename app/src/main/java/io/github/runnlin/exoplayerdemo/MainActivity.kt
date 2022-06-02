@@ -108,20 +108,27 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
     }
 
-    private fun setPathAndScan(isUSB: Boolean) {
-        if (_player.isPlaying) {
+    private fun setPathAndScan() {
+        mainViewModel.isExternalStorage = File(mainViewModel.usbMessPath).isDirectory
+        if (null != _player && _player.isPlaying) {
             _player.stop()
             _player.reset()
+        } else {
+            Toast.makeText(this, "PLAYER NULL", Toast.LENGTH_SHORT).show()
         }
+        Toast.makeText(
+            this,
+            "start scan...",
+            Toast.LENGTH_SHORT
+        ).show()
         mainViewModel.deleteAll()
-        initScan(isUSB)
-        if (isUSB) {
+        initScan(mainViewModel.isExternalStorage)
+        if (mainViewModel.isExternalStorage) {
 //            mainViewModel.usbMessPath = Environment.getExternalStorageDirectory().toString()
 //            rootPath = mainViewModel.usbMessPath
             _editText.setText(mainViewModel.usbMessPath)
         } else {
             _editText.setText(mainViewModel.internalPath)
-            mainViewModel.isExternalStorage = false
 //            getAllFilesInResources()
         }
         scan()
@@ -134,13 +141,18 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 USBReceiver.USB_DISK_MOUNTED -> {
                     // 更新后不需要再通过广播获取u盘路径，可以直接
                     // Environment.getExternalStorageDirectory().toString()
+//                    Toast.makeText(
+//                        this,
+//                        "Received UDisk mounted, start scan...",
+//                        Toast.LENGTH_SHORT
+//                    ).show()
                     mainViewModel.usbMessPath = data
-                    setPathAndScan(true)
+                    setPathAndScan()
 //                    mainViewModel.initLogFile()
 //                    scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
-                    setPathAndScan(false)
+//                    setPathAndScan(false)
                 }
             }
         }
@@ -208,13 +220,13 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         _floatBtn.setOnClickListener {
             Log.i(TAG, "_floatBtn load usb")
-            setPathAndScan(true)
+            setPathAndScan()
 //            scan()
         }
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
-            setPathAndScan(false)
+            setPathAndScan()
 //            getAllFilesInResources()
 //            scan()
         }
@@ -392,7 +404,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 mainViewModel.currentPosition = 0
 
                 MainScope().launch {
-                    delay(_recyclerView.size * 100L)
+                    delay(3 * 1000L)
                     playMedia()
                     _floatBtn.isEnabled = true
                 }
@@ -439,20 +451,27 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
 
     private fun scan() {
+        Log.i(TAG, "scan()")
         when (PackageManager.PERMISSION_GRANTED) {
             ContextCompat.checkSelfPermission(
                 this@MainActivity,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) -> {
                 if (Environment.isExternalStorageManager()) {
-                    if (mainViewModel.initLogFile()) {
+                    Log.i(TAG, "isExternalStorageManager")
+                    if (mainViewModel.initLogFile() && mainViewModel.isExternalStorage) {
                         startScan()
                     }
                 } else {
-                    val intent = Intent()
-                    intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                    Log.i(TAG, "NOT isExternalStorageManager")
+                    try {
+                        val intent = Intent()
+                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 //                    intent.data = Uri.parse(packageName)
-                    resultLauncher.launch(intent)
+                        resultLauncher.launch(intent)
+                    } catch (ex: Exception) {
+
+                    }
                 }
             }
             else -> {
@@ -472,7 +491,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             return
         }
         _scanFile.stop()
-        mainViewModel.isExternalStorage = true
         if (_player.isPlaying) {
             _player.stop()
             _player.reset()
@@ -548,8 +566,24 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                             mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
                                 ?: "NO ALBUM"
                             ).toUTF8String() +
-                            "\nArtist:   " + (
+                            "\nARTIST:   " + (
                             mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                                ?: "NO ARTIST"
+                            ).toUTF8String() +
+                            "\nALBUM—ARTIST:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+                                ?: "NO ARTIST"
+                            ).toUTF8String() +
+                            "\nGENRE:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE)
+                                ?: "NO ARTIST"
+                            ).toUTF8String() +
+                            "\nAUTHOR:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR)
+                                ?: "NO ARTIST"
+                            ).toUTF8String() +
+                            "\nCOMPOSER:   " + (
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
                                 ?: "NO ARTIST"
                             ).toUTF8String() + ("\n\n\n")
                     mainViewModel.saveLog(id3Info)
