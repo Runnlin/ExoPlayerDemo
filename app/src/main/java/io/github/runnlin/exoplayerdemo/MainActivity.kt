@@ -146,8 +146,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //                        "Received UDisk mounted, start scan...",
 //                        Toast.LENGTH_SHORT
 //                    ).show()
-                    mainViewModel.usbMessPath = data
-                    setPathAndScan()
+                    if (data.contains("/storage/usb0")) {
+                        mainViewModel.usbMessPath = data
+                        setPathAndScan()
+                    }
 //                    mainViewModel.initLogFile()
 //                    scan()
                 }
@@ -358,7 +360,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             },   extra:${extra}\n\n"
         )
         // 当出现IO错误（USB读取失败）时，就没必要再继续尝试播放了
-        if (what == -1004) {
+        if (what == -1004 || what == 100) {
             isAutoPlay = false
             _swLoop.isChecked = false
             _player.reset()
@@ -524,8 +526,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //        _player.stop()
         _player.setDisplay(null)
         _player.reset()
-        // 重置失败状态
-        isFailed = false
         if ((mainViewModel.allMediaInfo.value?.size ?: -1) == -1) {
 //            _player.reset()
             return
@@ -540,6 +540,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 mainViewModel.saveLog("本次测试结束\n\n")
             }
         } else {
+            // 重置失败状态
+            isFailed = false
             mainViewModel.currentMediaInfo =
                 mainViewModel.allMediaInfo.value!![mainViewModel.currentPosition]
             _recyclerView.smoothScrollToPosition(mainViewModel.currentPosition)
