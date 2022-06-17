@@ -40,13 +40,22 @@
             app:layout_constraintEnd_toEndOf="parent"
             tools:ignore="MissingConstraints">
 
+            <Spinner
+                android:id="@+id/spin_autoplay_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="12dp"
+                android:layout_alignParentTop="true"
+                android:theme="@style/Theme.Design.Light"
+                android:entries="@array/autoTime" />
+
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/id3Info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_alignParentTop="true"
-
+                android:layout_below="@+id/spin_autoplay_time"
                 android:text="id3Info"
+                android:layout_marginTop="12dp"
                 android:textColor="@color/white"
                 android:textSize="24sp" />
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="autoTime">
+        <item>5s</item>
+        <item>10s</item>
+        <item>20s</item>
+        <item>30s</item>
+    </string-array>
+</resources>

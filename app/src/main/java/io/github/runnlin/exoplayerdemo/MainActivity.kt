@@ -25,7 +25,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.size
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -44,7 +43,7 @@ import java.nio.charset.Charset
 
 
 private const val TAG = "ZRL|ExoMainActivity"
-private var DELAY_TIME: Long = 20 * 1000L
+var DELAY_TIME: Long = 20 * 1000L
 
 @SuppressLint("SdCardPath")
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
@@ -58,6 +57,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private lateinit var _id3Info: TextView
     private lateinit var _playerView: SurfaceView
     private lateinit var _player: MediaPlayer
+    private lateinit var _autoTime: Spinner
 
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     private lateinit var _swLoop: SwitchMaterial
@@ -68,6 +68,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
     private lateinit var _scanFile: ScanFileUtil
+
+    private lateinit var _timer: CountDownTimer
 
     private var isAutoPlay = false // 自动切曲
     private var isFailed = false // 已经失败（onError回调会调用多次，返回不同的Extra）
@@ -203,6 +205,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _id3Info = _binding.id3Info
         _swLoop = _binding.swLoop
         _cover = _binding.ivCover
+        _autoTime = _binding.spinAutoplayTime
         builderForInfoDialog = CustomDialog.Builder(this)
         mediaListAdapter = MediaListAdapter()
         mediaListAdapter.addItemClickListener(this)
@@ -235,6 +238,32 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
         _swLoop.setOnCheckedChangeListener { _, isChecked ->
             isAutoPlay = isChecked
+        }
+        _autoTime.setSelection(2)
+        _autoTime.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                Log.d(TAG, "_autoTime:${position}")
+                DELAY_TIME = when (position) {
+                    0 -> {
+                        5 * 1000L
+                    }
+                    else -> {
+                        position * 10 * 1000L
+                    }
+                }
+                if (_player.isPlaying) {
+                    _player.stop()
+                    _player.reset()
+                    playMedia()
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
@@ -285,13 +314,15 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             val duration = _player.duration.toLong()
             val delayTime =
                 if (duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
-            object : CountDownTimer(duration, 15) {
+            object : CountDownTimer(duration, 10) {
                 override fun onTick(millisUntilFinished: Long) {
-                    if (millisUntilFinished < (duration - delayTime) && isAutoPlay) {
+                    if (millisUntilFinished < (duration - delayTime)) {
                         this.cancel()
                         this.onFinish()
                     }
                     if (mainViewModel.currentMediaInfo.isAbility == 2 ||
+                        isFailed ||
+                        !isAutoPlay ||
                         !_player.isPlaying
                     ) {
                         this.cancel()
@@ -508,8 +539,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
         mainViewModel.currentMediaInfo = mediaInfo
         mainViewModel.currentPosition = position
-//        isAutoPlay = false
+        isAutoPlay = false
 
+        if (_player.isPlaying)
+            _player.stop()
         playMedia()
     }
 
