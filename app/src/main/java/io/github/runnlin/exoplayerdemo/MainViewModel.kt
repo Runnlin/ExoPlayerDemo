@@ -42,6 +42,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
     var currentPosition: Int = -1
+    var playErrorNum: Int = 0
     lateinit var currentMediaInfo: MediaInfo
 
     private lateinit var logFile: File

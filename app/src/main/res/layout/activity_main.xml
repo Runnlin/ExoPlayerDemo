@@ -15,7 +15,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <RelativeLayout
             android:id="@+id/surface_view_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -27,15 +27,8 @@
                 android:layout_height="match_parent"
                 app:played_color="@color/black"
                 app:unplayed_color="@color/black" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
+        </RelativeLayout>
 
-        <ImageView
-            android:id="@+id/ivCover"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:scaleType="fitCenter"
-            android:visibility="invisible"
-            tools:ignore="MissingConstraints,NotSibling" />
 
         <RelativeLayout
             android:id="@+id/id3infoFrame"
@@ -49,10 +42,12 @@
 
             <Spinner
                 android:id="@+id/spin_autoplay_time"
-                android:layout_alignParentTop="true"
-                android:entries="@array/autoTime"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:layout_margin="12dp"
+                android:layout_alignParentTop="true"
+                android:theme="@style/Theme.Design.Light"
+                android:entries="@array/autoTime" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/id3Info"
@@ -60,9 +55,20 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@+id/spin_autoplay_time"
                 android:text="id3Info"
+                android:layout_marginTop="12dp"
                 android:textColor="@color/white"
                 android:textSize="24sp" />
+
         </RelativeLayout>
+
+        <ImageView
+            android:id="@+id/ivCover"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:scaleType="fitCenter"
+            android:visibility="invisible"
+            tools:ignore="MissingConstraints,NotSibling" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -100,8 +106,17 @@
             android:layout_height="60dp"
             android:layout_marginEnd="10dp"
             android:text="/storage/usb0/"
-            app:layout_constraintEnd_toStartOf="@+id/swLoop"
+            app:layout_constraintEnd_toStartOf="@+id/cb_infinity"
             app:layout_constraintStart_toStartOf="parent"
+            tools:ignore="MissingConstraints" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/cb_infinity"
+            android:layout_width="wrap_content"
+            android:layout_height="60dp"
+            android:text="无限循环"
+            android:layout_marginEnd="10dp"
+            app:layout_constraintEnd_toStartOf="@+id/swLoop"
             tools:ignore="MissingConstraints" />
 
         <com.google.android.material.switchmaterial.SwitchMaterial

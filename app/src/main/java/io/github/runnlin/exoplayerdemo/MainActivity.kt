@@ -21,6 +21,7 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -28,8 +29,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
@@ -58,6 +61,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private lateinit var _playerView: SurfaceView
     private lateinit var _player: MediaPlayer
     private lateinit var _autoTime: Spinner
+    private lateinit var _infinityPlay: CheckBox
 
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     private lateinit var _swLoop: SwitchMaterial
@@ -68,8 +72,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private var builderForInfoDialog: CustomDialog.Builder? = null
 
     private lateinit var _scanFile: ScanFileUtil
-
-    private lateinit var _timer: CountDownTimer
 
     private var isAutoPlay = false // 自动切曲
     private var isFailed = false // 已经失败（onError回调会调用多次，返回不同的Extra）
@@ -156,6 +158,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //                    scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
+                    if (_player.isPlaying) {
+                        _player.stop()
+                        _player.release()
+                    }
 //                    setPathAndScan(false)
                 }
             }
@@ -206,6 +212,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _swLoop = _binding.swLoop
         _cover = _binding.ivCover
         _autoTime = _binding.spinAutoplayTime
+        _infinityPlay = _binding.cbInfinity
         builderForInfoDialog = CustomDialog.Builder(this)
         mediaListAdapter = MediaListAdapter()
         mediaListAdapter.addItemClickListener(this)
@@ -259,7 +266,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 if (_player.isPlaying) {
                     _player.stop()
                     _player.reset()
-                    playMedia()
+                    MainScope().launch {
+                        delay(100)
+                        playMedia()
+                    }
                 }
             }
 
@@ -291,13 +301,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             _player.prepareAsync()
 
         } catch (e: IllegalStateException) {
-            Log.e(TAG, "!!!!!!!Play ERROR:${e.printStackTrace()}")
             myOnError(1)
         } catch (e: IOException) {
-            Log.e(TAG, "!!!!!!!Play ERROR:${e.printStackTrace()}")
             myOnError(-1004)
         } catch (e: RuntimeException) {
-            Log.e(TAG, "!!!!!!!Play ERROR:${e.printStackTrace()}")
             myOnError(1)
         }
 
@@ -390,6 +397,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 )
             },   extra:${extra}\n\n"
         )
+        if (isAutoPlay)
+            mainViewModel.playErrorNum++
         // 当出现IO错误（USB读取失败）时，就没必要再继续尝试播放了
         if (what == -1004 || what == 100) {
             isAutoPlay = false
@@ -433,6 +442,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     "Scan Done, consumed: $timeConsuming",
                     Toast.LENGTH_SHORT
                 ).show()
+                mainViewModel.saveLog(
+                    "扫描结束，总计媒体文件数量：" + mainViewModel.allMediaInfo.value?.size
+                )
                 _swLoop.isChecked = true
                 mainViewModel.currentPosition = 0
 
@@ -564,13 +576,19 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             return
         }
         if (mainViewModel.currentPosition >= (mainViewModel.allMediaInfo.value?.size ?: -1)) {
-            if (isAutoPlay && !isFailed) {
-                mainViewModel.currentPosition = 0
-                playMedia()
-            } else {
-                _player.stop()
-                _player.reset()
-                mainViewModel.saveLog("本次测试结束\n\n")
+            if (isAutoPlay) {
+                if (_infinityPlay.isChecked) {
+                    mainViewModel.currentPosition = 0
+                    playMedia()
+                } else {
+                    _player.stop()
+                    _player.reset()
+                    mainViewModel.saveLog(
+                        "本次测试结束\n\n" +
+                                "总计测试媒体数量：" + (mainViewModel.allMediaInfo.value?.size ?: 0) + "\n" +
+                                "测试错误数量：" + mainViewModel.playErrorNum
+                    )
+                }
             }
         } else {
             // 重置失败状态
