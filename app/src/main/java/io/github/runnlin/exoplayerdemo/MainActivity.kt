@@ -116,7 +116,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         mainViewModel.isExternalStorage = File(mainViewModel.usbMessPath).isDirectory
         if (null != _player && _player.isPlaying) {
             _player.stop()
-            _player.reset()
+//            _player.reset()
         } else {
             Toast.makeText(this, "PLAYER NULL", Toast.LENGTH_SHORT).show()
         }
@@ -265,7 +265,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 }
                 if (_player.isPlaying) {
                     _player.stop()
-                    _player.reset()
+//                    _player.reset()
                     MainScope().launch {
                         delay(100)
                         playMedia()
@@ -320,19 +320,18 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             Log.i(TAG, "!!!!!!!isPlaying:\n${it.metrics}")
             val duration = _player.duration.toLong()
             val delayTime =
-                if (duration < DELAY_TIME) _player.duration.toLong() else DELAY_TIME
+                if (duration < DELAY_TIME) duration else DELAY_TIME
             object : CountDownTimer(duration, 10) {
                 override fun onTick(millisUntilFinished: Long) {
-                    if (millisUntilFinished < (duration - delayTime)) {
-                        this.cancel()
-                        this.onFinish()
-                    }
                     if (mainViewModel.currentMediaInfo.isAbility == 2 ||
                         isFailed ||
-                        !isAutoPlay ||
                         !_player.isPlaying
                     ) {
                         this.cancel()
+                    }
+                    if (isAutoPlay && millisUntilFinished <= (duration - delayTime)) {
+                        this.cancel()
+                        this.onFinish()
                     }
                     _progress.progress = (duration - millisUntilFinished).toInt()
                 }
@@ -372,7 +371,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
                 Log.i(TAG, "播放完成\n\n")
                 mainViewModel.saveLog("播放完成\n\n")
-                delayPlayNextMedia()
+//                delayPlayNextMedia()
             }
         }
     }
@@ -437,21 +436,24 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
             override fun scanComplete(timeConsuming: Long) {
 //                Log.i(TAG, "Scan Done, files: ${mainViewModel.allMediaInfo.value}")
-                Toast.makeText(
-                    this@MainActivity,
-                    "Scan Done, consumed: $timeConsuming",
-                    Toast.LENGTH_SHORT
-                ).show()
-                mainViewModel.saveLog(
-                    "扫描结束，总计媒体文件数量：" + mainViewModel.allMediaInfo.value?.size
-                )
-                _swLoop.isChecked = true
-                mainViewModel.currentPosition = 0
+                if (timeConsuming > -1) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Scan Done, consumed: $timeConsuming",
+                        Toast.LENGTH_SHORT
+                    ).show()
 
-                MainScope().launch {
-                    delay(3 * 1000L)
-                    playMedia()
-                    _floatBtn.isEnabled = true
+                    MainScope().launch {
+                        delay(timeConsuming)
+                        _floatBtn.isEnabled = true
+
+                        _swLoop.isChecked = true
+                        mainViewModel.currentPosition = 0
+                        mainViewModel.saveLog(
+                            "扫描结束，总计媒体文件数量：" + mainViewModel.allMediaInfo.value?.size
+                        )
+                        playMedia()
+                    }
                 }
             }
 
@@ -504,7 +506,10 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             ) -> {
                 if (Environment.isExternalStorageManager()) {
                     Log.i(TAG, "isExternalStorageManager")
-                    if (mainViewModel.initLogFile() && mainViewModel.isExternalStorage) {
+                    if (mainViewModel.isExternalStorage) {
+                        mainViewModel.initLogFile()
+                        startScan()
+                    } else {
                         startScan()
                     }
                 } else {
@@ -515,7 +520,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //                    intent.data = Uri.parse(packageName)
                         resultLauncher.launch(intent)
                     } catch (ex: Exception) {
-
+                        ex.printStackTrace()
                     }
                 }
             }
@@ -538,20 +543,20 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _scanFile.stop()
         if (_player.isPlaying) {
             _player.stop()
-            _player.reset()
+//            _player.reset()
         }
         _scanFile.startAsyncScan()
     }
 
     /* 点击项目播放 */
     override fun onPlayListener(mediaInfo: MediaInfo, position: Int) {
+        _swLoop.isChecked = false
         if (mainViewModel.currentPosition != -1 && mainViewModel.currentMediaInfo.isAbility == 3) {
             mainViewModel.currentMediaInfo.isAbility = 0
             mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
         }
         mainViewModel.currentMediaInfo = mediaInfo
         mainViewModel.currentPosition = position
-        isAutoPlay = false
 
         if (_player.isPlaying)
             _player.stop()
@@ -572,7 +577,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _player.setDisplay(null)
         _player.reset()
         if ((mainViewModel.allMediaInfo.value?.size ?: -1) == -1) {
-//            _player.reset()
+            _player.reset()
             return
         }
         if (mainViewModel.currentPosition >= (mainViewModel.allMediaInfo.value?.size ?: -1)) {
@@ -584,7 +589,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     _player.stop()
                     _player.reset()
                     mainViewModel.saveLog(
-                        "本次测试结束\n\n" +
+                        "本次测试结束\n" +
                                 "总计测试媒体数量：" + (mainViewModel.allMediaInfo.value?.size ?: 0) + "\n" +
                                 "测试错误数量：" + mainViewModel.playErrorNum
                     )
@@ -604,6 +609,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     TAG,
                     "start_play: ${mainViewModel.currentPosition}, path: $path"
                 )
+                mainViewModel.saveLog("准备播放: $path")
                 prepareMediaPlayer(Uri.parse(path))
 
 //                if (mainViewModel.currentMediaInfo.path != null) {
@@ -639,7 +645,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                             mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
                                 ?: "NO ARTIST"
                             ).toUTF8String() + ("\n\n\n")
-                    mainViewModel.saveLog(id3Info)
+//                    mainViewModel.saveLog(id3Info)
                     _id3Info.text = id3Info
 
                     val cover = mainViewModel.getAlbumImage(mmr)
@@ -689,9 +695,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        val surface = holder.surface
         Log.i(TAG, "surfaceCreated")
-        setupMediaPlayer(surface)
+        setupMediaPlayer(holder.surface)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -707,7 +712,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         val ins = intern().byteInputStream()
         val head = ByteArray(3)
         ins.read(head)
-        Log.i(TAG, "code:${head[0]},${head[1]}")
+//        Log.i(TAG, "code:${head[0]},${head[1]}")
         return when {
             head[0].toInt() == -28 && head[1].toInt() == -92 -> String(
                 intern().toByteArray(Charsets.UTF_16),

@@ -60,28 +60,34 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
             logFile = File(filePath)
             if (!logFile.exists() || !logFile.canWrite()) {
                 try {
-                    if (logFile.createNewFile())
+                    if (logFile.createNewFile()) {
                         Log.i(TAG, "createLogFile Success: $filePath")
+                        initFirstLog()
+                    }
                 } catch (e: IOException) {
                     Log.i(TAG, "createLogFile Failed: $e")
                 }
             } else {
-                try {
-                    Files.write(
-                        Paths.get(logFile.toURI()),
-                        "\n\n------------${LocalDateTime.now()}------------\n\n".toByteArray(),
-                        StandardOpenOption.APPEND
-                    )
-                    isLogEnable = true
-                } catch (e: IOException) {
-                    Log.i(TAG, "Open logFile Failed: $e")
-                }
+                initFirstLog()
             }
         } else {
             Log.i(TAG, "Can't Create LogFile, no messPath ")
             isLogEnable = false
         }
         return isLogEnable
+    }
+
+    private fun initFirstLog() {
+        try {
+            Files.write(
+                Paths.get(logFile.toURI()),
+                "\n\n------------${LocalDateTime.now()}------------\n\n".toByteArray(),
+                StandardOpenOption.APPEND
+            )
+            isLogEnable = true
+        } catch (e: IOException) {
+            Log.i(TAG, "Open logFile Failed: $e")
+        }
     }
 
     private fun isVideo(type: String?): Boolean {

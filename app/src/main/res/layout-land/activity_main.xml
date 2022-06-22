@@ -46,7 +46,7 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="12dp"
                 android:layout_alignParentTop="true"
-                android:theme="@style/Theme.Design.Light"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark"
                 android:entries="@array/autoTime" />
 
             <com.google.android.material.textview.MaterialTextView
