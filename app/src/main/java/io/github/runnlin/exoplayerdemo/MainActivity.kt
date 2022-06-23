@@ -593,6 +593,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                                 "总计测试媒体数量：" + (mainViewModel.allMediaInfo.value?.size ?: 0) + "\n" +
                                 "测试错误数量：" + mainViewModel.playErrorNum
                     )
+                    mainViewModel.playErrorNum = 0
                 }
             }
         } else {
