@@ -21,7 +21,6 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -29,10 +28,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.android.material.progressindicator.LinearProgressIndicator
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
@@ -267,7 +264,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     _player.stop()
 //                    _player.reset()
                     MainScope().launch {
-                        delay(100)
+                        delay(500)
                         playMedia()
                     }
                 }
@@ -442,11 +439,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                         "Scan Done, consumed: $timeConsuming",
                         Toast.LENGTH_SHORT
                     ).show()
-
                     MainScope().launch {
-                        delay(timeConsuming)
+                        delay(timeConsuming * 5)
                         _floatBtn.isEnabled = true
-
                         _swLoop.isChecked = true
                         mainViewModel.currentPosition = 0
                         mainViewModel.saveLog(
@@ -484,7 +479,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             }
         }
 
-    var resultLauncher =
+    private var resultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 // There are no request codes
@@ -659,7 +654,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                         _playerView.visibility = View.VISIBLE
                         _cover.visibility = View.GONE
                     }
-//                     = encodedInfoBytes.decodeToString()
                 } catch (e: FileNotFoundException) {
                     e.printStackTrace();
                 } catch (e: IOException) {
@@ -669,7 +663,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 } finally {
                     mmr.release()
                 }
-//                }
             } else {
                 Log.i(
                     TAG,
