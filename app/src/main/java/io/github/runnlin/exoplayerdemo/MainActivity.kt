@@ -706,10 +706,16 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         val ins = intern().byteInputStream()
         val head = ByteArray(3)
         ins.read(head)
-//        Log.i(TAG, "code:${head[0]},${head[1]}")
+        Log.i(TAG, "code:${head[0]},${head[1]}")
         return when {
+            //utf16
             head[0].toInt() == -28 && head[1].toInt() == -92 -> String(
                 intern().toByteArray(Charsets.UTF_16),
+                Charset.defaultCharset()
+            ).substring(2)
+            //utf32
+            head[0].toInt() == -28 && head[1].toInt() == -124 -> String(
+                intern().toByteArray(Charsets.UTF_32),
                 Charset.defaultCharset()
             ).substring(2)
             // unicode
