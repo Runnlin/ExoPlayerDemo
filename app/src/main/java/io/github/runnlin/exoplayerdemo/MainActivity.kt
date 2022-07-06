@@ -287,10 +287,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         }
     }
 
-    private fun prepareMediaPlayer(path: Uri) {
+    private fun prepareMediaPlayer(path: Uri, duration: Long) {
         // clear surface view
         _playerView.holder.setFormat(PixelFormat.TRANSPARENT)
         _playerView.holder.setFormat(PixelFormat.OPAQUE)
+        var durationTime = duration
 
         try {
             _player.setDataSource(this, path)
@@ -298,50 +299,59 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             _player.prepareAsync()
 
         } catch (e: IllegalStateException) {
-            myOnError(1)
+            myOnError(1, 0)
         } catch (e: IOException) {
-            myOnError(-1004)
+            myOnError(-1004, 0)
         } catch (e: RuntimeException) {
-            myOnError(1)
+            myOnError(1, 0)
         }
 
         /** PLAYER STATUS **/
         _player.setOnPreparedListener {
             _player.start()
 
-            _progress.max = _player.duration
-
             mainViewModel.currentMediaInfo.isAbility = 3
             mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
 
             Log.i(TAG, "!!!!!!!isPlaying:\n${it.metrics}")
-            val duration = _player.duration.toLong()
-            val delayTime =
-                if (duration < DELAY_TIME) duration else DELAY_TIME
-            object : CountDownTimer(duration, 10) {
-                override fun onTick(millisUntilFinished: Long) {
-                    if (mainViewModel.currentMediaInfo.isAbility == 2 ||
-                        isFailed ||
-                        !_player.isPlaying
-                    ) {
-                        this.cancel()
+            if (durationTime == -1L) {
+                durationTime = _player.duration.toLong()
+            }
+            if (durationTime == 0L) {
+                myOnError(-7788, 0)
+            } else {
+                _progress.max = durationTime.toInt()
+                val delayTime =
+                    if (durationTime < DELAY_TIME) durationTime else DELAY_TIME
+                Log.i(TAG, "CountDownTimer: duration:$duration, delayTime:$delayTime")
+                object : CountDownTimer(durationTime, 10) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        if (mainViewModel.currentMediaInfo.isAbility == 2 ||
+                            isFailed ||
+                            !_player.isPlaying
+                        ) {
+                            this.cancel()
+                        }
+                        if (isAutoPlay && (millisUntilFinished <= (durationTime - delayTime))) {
+                            this.cancel()
+                            this.onFinish()
+                            Log.i(TAG, "CountDownTimer millisUntilFinished: $millisUntilFinished")
+                        }
+                        _progress.progress = (durationTime - millisUntilFinished).toInt()
                     }
-                    if (isAutoPlay && millisUntilFinished <= (duration - delayTime)) {
-                        this.cancel()
-                        this.onFinish()
-                    }
-                    _progress.progress = (duration - millisUntilFinished).toInt()
-                }
 
-                override fun onFinish() {
-                    _progress.progress = 0
-                    mainViewModel.currentMediaInfo.isAbility = 1
-                    mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                    mainViewModel.saveLog("播放成功，自动切曲\n\n")
-                    Log.i(TAG, "播放成功，自动切曲")
-                    delayPlayNextMedia()
-                }
-            }.start()
+                    override fun onFinish() {
+                        _progress.progress = 0
+                        mainViewModel.currentMediaInfo.isAbility = 1
+                        mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+                        if (isAutoPlay) {
+                            mainViewModel.saveLog("播放成功，自动切曲\n\n")
+                            Log.i(TAG, "播放成功，自动切曲")
+                        }
+                        delayPlayNextMedia()
+                    }
+                }.start()
+            }
         }
 
         _player.setOnVideoSizeChangedListener { player, width, height ->
@@ -362,15 +372,15 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             false
         }
 
-        _player.setOnCompletionListener {
-            if (!isFailed) {
-                mainViewModel.currentMediaInfo.isAbility = 1
-                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-                Log.i(TAG, "播放完成\n\n")
-                mainViewModel.saveLog("播放完成\n\n")
-//                delayPlayNextMedia()
-            }
-        }
+//        _player.setOnCompletionListener {
+//            if (!isFailed) {
+//                mainViewModel.currentMediaInfo.isAbility = 1
+//                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
+//                Log.i(TAG, "播放完成\n\n")
+//                mainViewModel.saveLog("播放完成\n\n")
+////                delayPlayNextMedia()
+//            }
+//        }
     }
 
     private fun myOnError(what: Int = 0, extra: Int = 0) {
@@ -393,8 +403,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 )
             },   extra:${extra}\n\n"
         )
-        if (isAutoPlay)
-            mainViewModel.playErrorNum++
+        mainViewModel.currentMediaInfo.path?.let {
+            mainViewModel.playErrorFileSet.add(it)
+        }
         // 当出现IO错误（USB读取失败）时，就没必要再继续尝试播放了
         if (what == -1004 || what == 100) {
             isAutoPlay = false
@@ -583,12 +594,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 } else {
                     _player.stop()
                     _player.reset()
+                    val errorFilePaths = String()
+                    for (s: String in mainViewModel.playErrorFileSet) {
+                        errorFilePaths + (s + "\n")
+                    }
                     mainViewModel.saveLog(
                         "本次测试结束\n" +
                                 "总计测试媒体数量：" + (mainViewModel.allMediaInfo.value?.size ?: 0) + "\n" +
-                                "测试错误数量：" + mainViewModel.playErrorNum
+                                "测试错误数量：" + mainViewModel.playErrorFileSet.size + "\n" +
+                                "测试错误文件列表：" + errorFilePaths
                     )
-                    mainViewModel.playErrorNum = 0
+                    mainViewModel.playErrorFileSet.clear()
                 }
             }
         } else {
@@ -600,16 +616,16 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
             if (!mainViewModel.currentMediaInfo.path.isNullOrEmpty()) {
 
-                val path = mainViewModel.currentMediaInfo.path!!
+                val path = mainViewModel.currentMediaInfo.path
                 Log.i(
                     TAG,
                     "start_play: ${mainViewModel.currentPosition}, path: $path"
                 )
                 mainViewModel.saveLog("准备播放: $path")
-                prepareMediaPlayer(Uri.parse(path))
 
 //                if (mainViewModel.currentMediaInfo.path != null) {
                 val mmr = MediaMetadataRetriever()
+                var durationTime = 0L
                 try {
                     mmr.setDataSource(mainViewModel.currentMediaInfo.path)
                     val id3Info = "File Path:" + path +
@@ -643,6 +659,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                             ).toUTF8String() + ("\n\n\n")
 //                    mainViewModel.saveLog(id3Info)
                     _id3Info.text = id3Info
+                    durationTime =
+                        mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
+                            ?: -1L
 
                     val cover = mainViewModel.getAlbumImage(mmr)
                     if (null != cover) {
@@ -663,6 +682,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 } finally {
                     mmr.release()
                 }
+                prepareMediaPlayer(Uri.parse(path), durationTime)
             } else {
                 Log.i(
                     TAG,
@@ -706,7 +726,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         val ins = intern().byteInputStream()
         val head = ByteArray(3)
         ins.read(head)
-        Log.i(TAG, "code:${head[0]},${head[1]}")
+//        Log.i(TAG, "code:${head[0]},${head[1]}")
         return when {
             //utf16
             head[0].toInt() == -28 && head[1].toInt() == -92 -> String(

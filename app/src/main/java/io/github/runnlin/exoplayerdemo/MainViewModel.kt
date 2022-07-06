@@ -22,6 +22,7 @@ import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.collections.HashSet
 
 
 private const val TAG = "ZRL|MainViewModel"
@@ -42,7 +43,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     val allMediaInfo: LiveData<List<MediaInfo>> = repository.allFileInfo
     var currentPosition: Int = -1
-    var playErrorNum: Int = 0
+    var playErrorFileSet: HashSet<String> = HashSet()
     lateinit var currentMediaInfo: MediaInfo
 
     private lateinit var logFile: File
@@ -143,6 +144,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
                 -1010 -> "MEDIA_ERROR_UNSUPPORTED"
                 -110 -> "MEDIA_ERROR_TIMED_OUT"
                 -2147483648 -> "MEDIA_ERROR_SYSTEM"
+                -7788 -> "MEDIA_ERROR_GET_DURATION"
                 else -> "UNKNOWN ERROR"
             }
         } else {
