@@ -613,6 +613,7 @@ class ScanFileUtil {
             mFilseFilterSet.add("mpeg")
             mFilseFilterSet.add("mpg")
             mFilseFilterSet.add("mov")
+            mFilseFilterSet.add("ts")
         }
 
         /**

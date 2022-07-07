@@ -93,7 +93,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     private fun isVideo(type: String?): Boolean {
         when (type?.lowercase(Locale.getDefault())) {
-            "mp4", "avi", "flv", "3gp", "mkv", "wmv", "m4v", "rmvb", "vob", "webm", "mpeg", "mpg", "mov" -> return true
+            "mp4", "avi", "flv", "3gp", "mkv", "wmv", "m4v", "rmvb", "vob", "webm", "mpeg", "mpg", "mov", "ts" -> return true
         }
         return false
     }

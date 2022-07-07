@@ -40,6 +40,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.charset.Charset
+import java.nio.file.Files
 
 
 private const val TAG = "ZRL|ExoMainActivity"
@@ -464,7 +465,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             }
 
             override fun scanningCallBack(file: File) {
-                mainViewModel.insert(packageMediaFile(file))
+                if (file.isFile && file.length() > 1024)
+                    mainViewModel.insert(packageMediaFile(file))
             }
         })
     }
