@@ -596,9 +596,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 } else {
                     _player.stop()
                     _player.reset()
-                    val errorFilePaths = String()
+                    var errorFilePaths = "\n"
                     for (s: String in mainViewModel.playErrorFileSet) {
-                        errorFilePaths + (s + "\n")
+                        errorFilePaths += (s + "\n")
                     }
                     mainViewModel.saveLog(
                         "本次测试结束\n" +
