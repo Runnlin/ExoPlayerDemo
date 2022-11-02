@@ -37,6 +37,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.charset.Charset
@@ -95,7 +96,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     override fun onStop() {
-        _player.stop()
+        if (_player.isPlaying) {
+            _player.stop()
+        }
         _player.release()
         super.onStop()
     }
@@ -494,11 +497,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     private var resultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            Log.i(TAG, "registerForActivityResult: $result")
             if (result.resultCode == Activity.RESULT_OK) {
-                // There are no request codes
-//            if (mainViewModel.initLogFile()) {
-                startScan()
-//            }
+                scan()
             } else {
                 Toast.makeText(this@MainActivity, "NO Permission, NO Scan", Toast.LENGTH_SHORT)
                     .show()
@@ -628,62 +629,66 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //                if (mainViewModel.currentMediaInfo.path != null) {
                 val mmr = MediaMetadataRetriever()
                 var durationTime = 0L
-                try {
-                    mmr.setDataSource(mainViewModel.currentMediaInfo.path)
-                    val id3Info = "File Path:" + path +
-                            "\n\nTITLE:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                                ?: "NO TITLE"
-                            ).toUTF8String() +
-                            "\nALBUM:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                                ?: "NO ALBUM"
-                            ).toUTF8String() +
-                            "\nARTIST:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                                ?: "NO ARTIST"
-                            ).toUTF8String() +
-                            "\nALBUM—ARTIST:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-                                ?: "NO ARTIST"
-                            ).toUTF8String() +
-                            "\nGENRE:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE)
-                                ?: "NO ARTIST"
-                            ).toUTF8String() +
-                            "\nAUTHOR:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR)
-                                ?: "NO ARTIST"
-                            ).toUTF8String() +
-                            "\nCOMPOSER:   " + (
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
-                                ?: "NO ARTIST"
-                            ).toUTF8String() + ("\n\n\n")
+                if (!path.isNullOrEmpty()) {
+                    val inputStream = FileInputStream(File(path).absolutePath)
+                    try {
+                        mmr.setDataSource(inputStream.fd)
+                        val id3Info = "File Path:" + path +
+                                "\n\nTITLE:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                                    ?: "NO TITLE"
+                                ).toUTF8String() +
+                                "\nALBUM:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                                    ?: "NO ALBUM"
+                                ).toUTF8String() +
+                                "\nARTIST:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                                    ?: "NO ARTIST"
+                                ).toUTF8String() +
+                                "\nALBUM—ARTIST:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+                                    ?: "NO ARTIST"
+                                ).toUTF8String() +
+                                "\nGENRE:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE)
+                                    ?: "NO ARTIST"
+                                ).toUTF8String() +
+                                "\nAUTHOR:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR)
+                                    ?: "NO ARTIST"
+                                ).toUTF8String() +
+                                "\nCOMPOSER:   " + (
+                                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
+                                    ?: "NO ARTIST"
+                                ).toUTF8String() + ("\n\n\n")
 //                    mainViewModel.saveLog(id3Info)
-                    _id3Info.text = id3Info
-                    durationTime =
-                        mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
-                            ?: -1L
+                        _id3Info.text = id3Info
+                        durationTime =
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
+                                ?: -1L
 
-                    val cover = mainViewModel.getAlbumImage(mmr)
-                    if (null != cover) {
-                        Log.i(TAG, "get cover!")
-                        _playerView.visibility = View.GONE
-                        _cover.visibility = View.VISIBLE
-                        _cover.setImageBitmap(cover)
-                    } else {
-                        _playerView.visibility = View.VISIBLE
-                        _cover.visibility = View.GONE
+                        val cover = mainViewModel.getAlbumImage(mmr)
+                        if (null != cover) {
+                            Log.i(TAG, "get cover!")
+                            _playerView.visibility = View.GONE
+                            _cover.visibility = View.VISIBLE
+                            _cover.setImageBitmap(cover)
+                        } else {
+                            _playerView.visibility = View.VISIBLE
+                            _cover.visibility = View.GONE
+                        }
+                    } catch (e: FileNotFoundException) {
+                        e.printStackTrace();
+                    } catch (e: IOException) {
+                        e.printStackTrace();
+                    } catch (e: RuntimeException) {
+                        e.printStackTrace();
+                    } finally {
+                        mmr.release()
                     }
-                } catch (e: FileNotFoundException) {
-                    e.printStackTrace();
-                } catch (e: IOException) {
-                    e.printStackTrace();
-                } catch (e: RuntimeException) {
-                    e.printStackTrace();
-                } finally {
-                    mmr.release()
                 }
+
                 prepareMediaPlayer(Uri.parse(path), durationTime)
             } else {
                 Log.i(

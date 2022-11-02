@@ -390,6 +390,7 @@ class ScanFileUtil {
          * @param arrayOfScanFileUtils 扫描任务们 Scanning tasks
          * @param allCompleteCallBack 全部完成回调
          */
+        @OptIn(DelicateCoroutinesApi::class)
         fun scan(vararg arrayOfScanFileUtils: ScanFileUtil?, allCompleteCallBack: () -> Unit) {
             //如果任务已经开始了不允许再次执行和调用
             if (launch != null && launch?.isActive == true) {
@@ -523,7 +524,7 @@ class ScanFileUtil {
          * Scan names like its files or folders
          */
         fun scanNameLikeIt(like: String) {
-            mNameLikeFilterSet.add(like.toLowerCase(Locale.getDefault()))
+            mNameLikeFilterSet.add(like.lowercase(Locale.getDefault()))
         }
 
         /**
@@ -533,7 +534,7 @@ class ScanFileUtil {
          * That is, don't scan files with names like this
          */
         fun scanNameNotLikeIt(like: String) {
-            mNameNotLikeFilterSet.add(like.toLowerCase(Locale.getDefault()))
+            mNameNotLikeFilterSet.add(like.lowercase(Locale.getDefault()))
         }
 
         /**
@@ -614,6 +615,7 @@ class ScanFileUtil {
             mFilseFilterSet.add("mpg")
             mFilseFilterSet.add("mov")
             mFilseFilterSet.add("ts")
+            mFilseFilterSet.add("f4v")
         }
 
         /**
@@ -653,7 +655,7 @@ class ScanFileUtil {
             //相似名字获取过滤
             if (mNameLikeFilterSet.isNotEmpty()) {
                 mNameLikeFilterSet.map {
-                    if (name.toLowerCase(Locale.getDefault()).contains(it)) {
+                    if (name.lowercase(Locale.getDefault()).contains(it)) {
                         return true
                     }
                 }
@@ -669,7 +671,7 @@ class ScanFileUtil {
             //名字不相似顾虑
             if (mNameNotLikeFilterSet.isNotEmpty()) {
                 mNameNotLikeFilterSet.map {
-                    if (name.toLowerCase(Locale.getDefault()).contains(it)) {
+                    if (name.lowercase(Locale.getDefault()).contains(it)) {
                         return false
                     }
                 }
