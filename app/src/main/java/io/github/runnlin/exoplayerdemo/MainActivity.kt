@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     SurfaceHolder.Callback {
 
     private lateinit var _recyclerView: RecyclerView
-    private lateinit var _floatBtn: ExtendedFloatingActionButton
+//    private lateinit var _floatBtn: ExtendedFloatingActionButton
     private lateinit var _floatBtnLocal: ExtendedFloatingActionButton
     private lateinit var _editText: EditText
     private lateinit var _progress: LinearProgressIndicator
@@ -128,14 +128,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         ).show()
         mainViewModel.deleteAll()
         initScan(mainViewModel.isExternalStorage)
-        if (mainViewModel.isExternalStorage) {
-//            mainViewModel.usbMessPath = Environment.getExternalStorageDirectory().toString()
-//            rootPath = mainViewModel.usbMessPath
-            _editText.setText(mainViewModel.usbMessPath)
-        } else {
-            _editText.setText(mainViewModel.internalPath)
-//            getAllFilesInResources()
-        }
         scan()
     }
 
@@ -205,7 +197,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     private fun initView() {
         _recyclerView = _binding.rvPlaylist
         _playerView = _binding.videoView
-        _floatBtn = _binding.floatBtn
+//        _floatBtn = _binding.floatBtn
         _floatBtnLocal = _binding.floatBtnLocal
         _progress = _binding.progress
         _editText = _binding.textInputEditText
@@ -231,11 +223,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             mediaListAdapter.submitList(medias)
         }
 
-        _floatBtn.setOnClickListener {
-            Log.i(TAG, "_floatBtn load usb")
-            setPathAndScan()
-//            scan()
-        }
+//        _floatBtn.setOnClickListener {
+//            Log.i(TAG, "_floatBtn load usb")
+//            setPathAndScan()
+////            scan()
+//        }
 
         _floatBtnLocal.setOnClickListener {
             Log.i(TAG, "_floatBtnLocal ")
@@ -422,10 +414,14 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun initScan(isUsb: Boolean) {
-        _scanFile = if (isUsb)
+        _scanFile = if (isUsb) {
+            _editText.setText(mainViewModel.usbMessPath)
             ScanFileUtil(mainViewModel.usbMessPath)
-        else
+        }
+        else {
+            _editText.setText(mainViewModel.internalPath)
             ScanFileUtil(mainViewModel.internalPath)
+        }
         _scanFile.setCallBackFilter(
             ScanFileUtil.FileFilterBuilder().apply {
                 onlyScanFile()
@@ -443,7 +439,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 ).show()
 //                _player.clearMediaItems()
                 _swLoop.isChecked = false
-                _floatBtn.isEnabled = false
+//                _floatBtn.isEnabled = false
+                _floatBtnLocal.isEnabled = false
             }
 
             override fun scanComplete(timeConsuming: Long) {
@@ -456,7 +453,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     ).show()
                     MainScope().launch {
                         delay(timeConsuming * 5)
-                        _floatBtn.isEnabled = true
+//                        _floatBtn.isEnabled = true
+                        _floatBtnLocal.isEnabled = true
                         _swLoop.isChecked = true
                         mainViewModel.currentPosition = 0
                         mainViewModel.saveLog(
@@ -513,25 +511,26 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 this@MainActivity,
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) -> {
-                if (Environment.isExternalStorageManager()) {
-                    Log.i(TAG, "isExternalStorageManager")
-                    if (mainViewModel.isExternalStorage) {
+                if (mainViewModel.isExternalStorage) {
+                    if (Environment.isExternalStorageManager()) {
+                        Log.i(TAG, "isExternalStorageManager")
                         mainViewModel.initLogFile()
                         startScan()
                     } else {
-                        startScan()
+                        Log.i(TAG, "NOT isExternalStorageManager")
+                        try {
+                            val intent = Intent()
+                            intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+//                    intent.data = Uri.parse(packageName)
+                            resultLauncher.launch(intent)
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
+                        }
                     }
                 } else {
-                    Log.i(TAG, "NOT isExternalStorageManager")
-                    try {
-                        val intent = Intent()
-                        intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-//                    intent.data = Uri.parse(packageName)
-                        resultLauncher.launch(intent)
-                    } catch (ex: Exception) {
-                        ex.printStackTrace()
-                    }
+                    startScan()
                 }
+
             }
             else -> {
                 requestPermissionLauncher.launch(
@@ -543,8 +542,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     private fun startScan() {
         Log.i(TAG, "Start Scan Path: ${mainViewModel.usbMessPath}")
-        if (!File(mainViewModel.usbMessPath).exists()) {
-            Log.e(TAG, "NO USB disk")
+        if (!File(mainViewModel.usbMessPath).exists() && !(File(mainViewModel.internalPath).exists())) {
+            Log.e(TAG, "NO disk")
             Toast.makeText(this@MainActivity, "NO USB disk", Toast.LENGTH_SHORT)
                 .show()
             return

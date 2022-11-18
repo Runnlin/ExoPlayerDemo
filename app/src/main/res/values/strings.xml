@@ -3,5 +3,5 @@
     <string name="refresh_list">Refresh List</string>
     <string name="refresh">Load UDisk</string>
     <string name="gainLocalList">Load local</string>
-    <string name="loadLocalList">Load local</string>
+    <string name="loadLocalList">Load Files</string>
 </resources>

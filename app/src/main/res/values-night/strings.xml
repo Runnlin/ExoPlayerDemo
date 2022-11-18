@@ -2,5 +2,5 @@
 <resources>
     <string name="refresh_list">Refresh list</string>
     <string name="gainLocalList">Load local</string>
-    <string name="loadLocalList">Load local</string>
+    <string name="loadLocalList">Load Files</string>
 </resources>

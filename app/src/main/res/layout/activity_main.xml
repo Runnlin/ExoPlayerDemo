@@ -130,24 +130,24 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:paddingBottom="8dp"
-            app:layout_constraintBottom_toTopOf="@+id/float_btn"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textInputEditText" />
 
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-            android:id="@+id/float_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginBottom="10dp"
-            android:contentDescription="@string/refresh_list"
-            android:text="@string/refresh"
-            app:backgroundTint="@android:color/holo_orange_light"
-            app:icon="@drawable/ic_refresh"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            tools:ignore="MissingConstraints" />
+<!--        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton-->
+<!--            android:id="@+id/float_btn"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginStart="10dp"-->
+<!--            android:layout_marginBottom="10dp"-->
+<!--            android:contentDescription="@string/refresh_list"-->
+<!--            android:text="@string/refresh"-->
+<!--            app:backgroundTint="@android:color/holo_orange_light"-->
+<!--            app:icon="@drawable/ic_refresh"-->
+<!--            app:layout_constraintBottom_toBottomOf="parent"-->
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            tools:ignore="MissingConstraints" />-->
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
             android:id="@+id/float_btn_local"
@@ -155,7 +155,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="10dp"
             android:layout_marginBottom="10dp"
-            android:contentDescription="@string/gainLocalList"
+            android:contentDescription="@string/loadLocalList"
             android:text="@string/loadLocalList"
             app:backgroundTint="@android:color/holo_blue_bright"
             app:icon="@drawable/ic_refresh"
