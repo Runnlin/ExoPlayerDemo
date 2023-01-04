@@ -118,8 +118,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         if (null != _player && _player.isPlaying) {
             _player.stop()
 //            _player.reset()
-        } else {
-            Toast.makeText(this, "PLAYER NULL", Toast.LENGTH_SHORT).show()
         }
         Toast.makeText(
             this,
@@ -138,13 +136,17 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 USBReceiver.USB_DISK_MOUNTED -> {
                     // 更新后不需要再通过广播获取u盘路径，可以直接
                     // Environment.getExternalStorageDirectory().toString()
-//                    Toast.makeText(
-//                        this,
-//                        "Received UDisk mounted, start scan...",
-//                        Toast.LENGTH_SHORT
-//                    ).show()
-                    if (data.contains("/storage/usb0")) {
-                        mainViewModel.usbMessPath = data
+                    Toast.makeText(
+                        this,
+                        "Received UDisk mounted, start scan "+data,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    if (data.contains("usb")) {
+//                        mainViewModel.usbMessPath = data
+                        if (File("/storage/usb1").isDirectory)
+                            mainViewModel.usbMessPath = "/storage/usb1"
+                        else if (File("/storage/usb0").isDirectory)
+                            mainViewModel.usbMessPath = "/storage/usb0"
                         setPathAndScan()
                     }
 //                    mainViewModel.initLogFile()
@@ -414,14 +416,13 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun initScan(isUsb: Boolean) {
-        _scanFile = if (isUsb) {
-            _editText.setText(mainViewModel.usbMessPath)
-            ScanFileUtil(mainViewModel.usbMessPath)
-        }
-        else {
-            _editText.setText(mainViewModel.internalPath)
-            ScanFileUtil(mainViewModel.internalPath)
-        }
+        _editText.setText(mainViewModel.usbMessPath)
+        _scanFile = ScanFileUtil(mainViewModel.usbMessPath)
+//        }
+//        else {
+//            _editText.setText(mainViewModel.internalPath)
+//            ScanFileUtil(mainViewModel.internalPath)
+//        }
         _scanFile.setCallBackFilter(
             ScanFileUtil.FileFilterBuilder().apply {
                 onlyScanFile()
@@ -446,26 +447,29 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             override fun scanComplete(timeConsuming: Long) {
 //                Log.i(TAG, "Scan Done, files: ${mainViewModel.allMediaInfo.value}")
                 if (timeConsuming > -1) {
+                    Log.i(TAG, "Scan Complete")
                     Toast.makeText(
                         this@MainActivity,
                         "Scan Done, consumed: $timeConsuming",
                         Toast.LENGTH_SHORT
                     ).show()
                     MainScope().launch {
-                        delay(timeConsuming * 5)
-//                        _floatBtn.isEnabled = true
+                        delay(timeConsuming * 3)
                         _floatBtnLocal.isEnabled = true
-                        _swLoop.isChecked = true
-                        mainViewModel.currentPosition = 0
-                        mainViewModel.saveLog(
-                            "扫描结束，总计媒体文件数量：" + mainViewModel.allMediaInfo.value?.size
-                        )
-                        playMedia()
+                        if (mainViewModel.allMediaInfo.value?.isNotEmpty() == true) {
+                            _swLoop.isChecked = true
+                            mainViewModel.currentPosition = 0
+                            mainViewModel.saveLog(
+                                "扫描结束，总计媒体文件数量：" + mainViewModel.allMediaInfo.value?.size
+                            )
+                            playMedia()
+                        }
                     }
                 }
             }
 
             override fun scanningCallBack(file: File) {
+                Log.i(TAG, "Scan CallBack:  "+file.name)
                 if (file.isFile && file.length() > 1024)
                     mainViewModel.insert(packageMediaFile(file))
             }
@@ -542,12 +546,12 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 
     private fun startScan() {
         Log.i(TAG, "Start Scan Path: ${mainViewModel.usbMessPath}")
-        if (!File(mainViewModel.usbMessPath).exists() && !(File(mainViewModel.internalPath).exists())) {
-            Log.e(TAG, "NO disk")
-            Toast.makeText(this@MainActivity, "NO USB disk", Toast.LENGTH_SHORT)
-                .show()
-            return
-        }
+//        if (!File(mainViewModel.usbMessPath).exists()) {
+//            Log.e(TAG, "NO disk")
+//            Toast.makeText(this@MainActivity, "NO USB disk", Toast.LENGTH_SHORT)
+//                .show()
+//            return
+//        }
         _scanFile.stop()
         if (_player.isPlaying) {
             _player.stop()

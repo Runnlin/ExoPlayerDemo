@@ -1,5 +1,6 @@
 package io.github.runnlin.exoplayerdemo
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -29,12 +30,12 @@ private const val TAG = "ZRL|MainViewModel"
 
 class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
-    var usbMessPath = "/storage/usb0/"
+    var usbMessPath = "/storage/usb1"
 //    val usbMessPath = "/mnt/media_rw/usb0/"
 
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"
-    val internalPath: String = Environment.getExternalStorageDirectory().path
+//    val internalPath: String = Environment.getExternalStorageDirectory().path
     val LOG_FILE_NAME = "DesaysvMediaTesterLog.txt"
 
     var isExternalStorage = false
@@ -99,8 +100,8 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
     }
 
     fun saveLog(content: String) {
+        Log.i(TAG, "saveLog: $content")
         if (isExternalStorage && isLogEnable) {
-            Log.i(TAG, "saveLog: $content")
 
             val current = LocalDateTime.now()
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH:mm:ss.SSSS")
