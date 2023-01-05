@@ -58,8 +58,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
     // ktx
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0"
-    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.4.0"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.1"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.4.1"
     implementation "androidx.activity:activity-ktx:1.4.0"
 
     // Kotlin components
@@ -69,8 +69,10 @@ dependencies {
     // ExoPlayer
 //    implementation "com.google.android.exoplayer:exoplayer:$exoVersion"
     // Room
-    def room_version = "2.4.0"
+    def room_version = "2.4.2"
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
+
+    compileOnly files('./libs/framework.jar')
 }

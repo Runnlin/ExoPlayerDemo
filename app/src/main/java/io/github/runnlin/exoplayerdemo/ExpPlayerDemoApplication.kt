@@ -7,6 +7,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
 class ExpPlayerDemoApplication: Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+
+        UEventReceiver.getInstance().init(this)
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+
+        UEventReceiver.getInstance().destroy()
+    }
     private val applicationScope = CoroutineScope(SupervisorJob())
 
     private val database by lazy {
