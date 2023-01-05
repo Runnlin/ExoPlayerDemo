@@ -24,7 +24,10 @@ class USBReceiver(private val onUsbDiskMountState: ((Int, String) -> Unit)? = nu
                 Intent.ACTION_MEDIA_MOUNTED -> {
                     onUsbDiskMountState?.invoke(USB_DISK_MOUNTED, _data)
                 }
-                Intent.ACTION_MEDIA_UNMOUNTED, Intent.ACTION_MEDIA_EJECT -> {
+                Intent.ACTION_MEDIA_UNMOUNTED,
+                Intent.ACTION_MEDIA_EJECT,
+                Intent.ACTION_MEDIA_BAD_REMOVAL,
+                Intent.ACTION_MEDIA_REMOVED -> {
                     onUsbDiskMountState?.invoke(USB_DISK_UNMOUNTED, _data)
                 }
             }

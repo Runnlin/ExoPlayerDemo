@@ -3,8 +3,7 @@ package io.github.runnlin.exoplayerdemo
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.media.AudioAttributes
@@ -14,6 +13,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
+import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import android.view.*
@@ -32,6 +32,7 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
+import io.github.runnlin.exoplayerdemo.data.MediaService
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -41,7 +42,6 @@ import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.charset.Charset
-import java.nio.file.Files
 
 
 private const val TAG = "ZRL|ExoMainActivity"
@@ -52,7 +52,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     SurfaceHolder.Callback {
 
     private lateinit var _recyclerView: RecyclerView
-//    private lateinit var _floatBtn: ExtendedFloatingActionButton
     private lateinit var _floatBtnLocal: ExtendedFloatingActionButton
     private lateinit var _editText: EditText
     private lateinit var _progress: LinearProgressIndicator
@@ -93,6 +92,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //        mainViewModel.deleteAll()
         //应用运行时，保持屏幕高亮，不锁屏
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+//        mainViewModel.bindMediaService()
     }
 
     override fun onStop() {
@@ -138,7 +139,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     // Environment.getExternalStorageDirectory().toString()
                     Toast.makeText(
                         this,
-                        "Received UDisk mounted, start scan "+data,
+                        "Received UDisk mounted, start scan $data",
                         Toast.LENGTH_SHORT
                     ).show()
                     if (data.contains("usb")) {
@@ -241,7 +242,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _swLoop.setOnCheckedChangeListener { _, isChecked ->
             isAutoPlay = isChecked
         }
-        _autoTime.setSelection(2)
+        _autoTime.setSelection(0)
         _autoTime.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>?,
@@ -469,7 +470,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             }
 
             override fun scanningCallBack(file: File) {
-                Log.i(TAG, "Scan CallBack:  "+file.name)
+                Log.i(TAG, "Scan CallBack:  " + file.name)
                 if (file.isFile && file.length() > 1024)
                     mainViewModel.insert(packageMediaFile(file))
             }
@@ -668,7 +669,8 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
 //                    mainViewModel.saveLog(id3Info)
                         _id3Info.text = id3Info
                         durationTime =
-                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
+                            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                ?.toLong()
                                 ?: -1L
 
                         val cover = mainViewModel.getAlbumImage(mmr)

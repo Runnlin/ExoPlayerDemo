@@ -49,6 +49,8 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     private lateinit var logFile: File
 
+
+
     fun initLogFile(): Boolean {
         Log.i(
             TAG,
