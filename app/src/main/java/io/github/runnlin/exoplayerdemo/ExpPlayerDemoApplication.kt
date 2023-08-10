@@ -11,13 +11,13 @@ class ExpPlayerDemoApplication: Application() {
     override fun onCreate() {
         super.onCreate()
 
-        UEventReceiver.getInstance().init(this)
+//        UEventReceiver.getInstance().init(this)
     }
 
     override fun onTerminate() {
         super.onTerminate()
 
-        UEventReceiver.getInstance().destroy()
+//        UEventReceiver.getInstance().destroy()
     }
     private val applicationScope = CoroutineScope(SupervisorJob())
 

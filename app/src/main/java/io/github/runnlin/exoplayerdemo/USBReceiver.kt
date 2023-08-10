@@ -12,6 +12,7 @@ class USBReceiver(private val onUsbDiskMountState: ((Int, String) -> Unit)? = nu
         private val TAG = USBReceiver::class.java.simpleName
         const val USB_DISK_MOUNTED = 1
         const val USB_DISK_UNMOUNTED = 2
+        var isUsbDiskMounted = false
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -23,12 +24,14 @@ class USBReceiver(private val onUsbDiskMountState: ((Int, String) -> Unit)? = nu
             when (_action) {
                 Intent.ACTION_MEDIA_MOUNTED -> {
                     onUsbDiskMountState?.invoke(USB_DISK_MOUNTED, _data)
+                    isUsbDiskMounted = true
                 }
                 Intent.ACTION_MEDIA_UNMOUNTED,
                 Intent.ACTION_MEDIA_EJECT,
                 Intent.ACTION_MEDIA_BAD_REMOVAL,
                 Intent.ACTION_MEDIA_REMOVED -> {
                     onUsbDiskMountState?.invoke(USB_DISK_UNMOUNTED, _data)
+                    isUsbDiskMounted = false
                 }
             }
         }

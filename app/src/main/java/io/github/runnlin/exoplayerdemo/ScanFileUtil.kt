@@ -165,6 +165,8 @@ class ScanFileUtil {
         mCoroutineScope?.cancel()
     }
 
+    fun isStop() = isStop
+
     /**
      * 获取扫描耗时
      *Time to get a scan

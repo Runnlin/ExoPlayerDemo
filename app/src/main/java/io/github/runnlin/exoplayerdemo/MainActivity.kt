@@ -13,7 +13,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Environment
-import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import android.view.*
@@ -32,7 +31,6 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.switchmaterial.SwitchMaterial
 import io.github.runnlin.exoplayerdemo.data.MediaInfo
-import io.github.runnlin.exoplayerdemo.data.MediaService
 import io.github.runnlin.exoplayerdemo.databinding.ActivityMainBinding
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -43,9 +41,11 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.charset.Charset
 
-
 private const val TAG = "ZRL|ExoMainActivity"
+
 var DELAY_TIME: Long = 20 * 1000L
+var FORCE_SCAN_USB: Boolean = true
+var DEFAULT_AUTO_TIME: Int = 0
 
 @SuppressLint("SdCardPath")
 class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun setPathAndScan() {
-        mainViewModel.isExternalStorage = File(mainViewModel.usbMessPath).isDirectory
+//        mainViewModel.isExternalStorage = File(mainViewModel.usbMessPath).isDirectory
         if (null != _player && _player.isPlaying) {
             _player.stop()
 //            _player.reset()
@@ -143,22 +143,37 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                         Toast.LENGTH_SHORT
                     ).show()
                     if (data.contains("usb")) {
-//                        mainViewModel.usbMessPath = data
-                        if (File("/storage/usb1").isDirectory)
-                            mainViewModel.usbMessPath = "/storage/usb1"
-                        else if (File("/storage/usb0").isDirectory)
-                            mainViewModel.usbMessPath = "/storage/usb0"
-                        setPathAndScan()
+                        if (FORCE_SCAN_USB) {
+                            mainViewModel.usbMessPath = data
+                            if (File("/storage/usb1").isDirectory) {
+                                mainViewModel.usbMessPath = "/storage/usb1"
+                                mainViewModel.isExternalStorage = true
+                            }
+                            else if (File("/storage/usb0").isDirectory) {
+                                mainViewModel.usbMessPath = "/storage/usb0"
+                                mainViewModel.isExternalStorage = true
+                            } else {
+                                mainViewModel.isExternalStorage = false
+                            }
+                            mainViewModel.initLogFile()
+                            setPathAndScan()
+                        } else {
+                            scan()
+                        }
                     }
-//                    mainViewModel.initLogFile()
-//                    scan()
                 }
                 USBReceiver.USB_DISK_UNMOUNTED -> {
                     if (_player.isPlaying) {
                         _player.stop()
+                        _player.reset()
                         _player.release()
                     }
-//                    setPathAndScan(false)
+                    if (_scanFile != null && !_scanFile.isStop()) {
+                        _scanFile.stop()
+                    }
+                    isAutoPlay = false
+                    _swLoop.isChecked = false
+                    mainViewModel.deleteAll()
                 }
             }
         }
@@ -242,7 +257,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
         _swLoop.setOnCheckedChangeListener { _, isChecked ->
             isAutoPlay = isChecked
         }
-        _autoTime.setSelection(0)
+        _autoTime.setSelection(DEFAULT_AUTO_TIME)
         _autoTime.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>?,
@@ -370,16 +385,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             }
             false
         }
-
-//        _player.setOnCompletionListener {
-//            if (!isFailed) {
-//                mainViewModel.currentMediaInfo.isAbility = 1
-//                mediaListAdapter.notifyItemChanged(mainViewModel.currentPosition)
-//                Log.i(TAG, "播放完成\n\n")
-//                mainViewModel.saveLog("播放完成\n\n")
-////                delayPlayNextMedia()
-//            }
-//        }
     }
 
     private fun myOnError(what: Int = 0, extra: Int = 0) {
@@ -406,7 +411,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             mainViewModel.playErrorFileSet.add(it)
         }
         // 当出现IO错误（USB读取失败）时，就没必要再继续尝试播放了
-        if (what == -1004 || what == 100) {
+        if (what == -1004 || what == 100 || !USBReceiver.isUsbDiskMounted) {
             isAutoPlay = false
             _swLoop.isChecked = false
             _player.reset()
@@ -417,13 +422,19 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun initScan(isUsb: Boolean) {
-        _editText.setText(mainViewModel.usbMessPath)
-        _scanFile = ScanFileUtil(mainViewModel.usbMessPath)
-//        }
-//        else {
-//            _editText.setText(mainViewModel.internalPath)
-//            ScanFileUtil(mainViewModel.internalPath)
-//        }
+        if (isUsb) {
+            _editText.setText(mainViewModel.usbMessPath)
+            _scanFile = ScanFileUtil(mainViewModel.usbMessPath)
+        } else {
+            _scanFile = ScanFileUtil(mainViewModel.internalPath)
+            if (File(mainViewModel.internalPath).isDirectory) {
+                _editText.setText(mainViewModel.internalPath)
+                ScanFileUtil(mainViewModel.internalPath)
+            } else {
+                _editText.setText("No path")
+                return
+            }
+        }
         _scanFile.setCallBackFilter(
             ScanFileUtil.FileFilterBuilder().apply {
                 onlyScanFile()
@@ -446,7 +457,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
             }
 
             override fun scanComplete(timeConsuming: Long) {
-//                Log.i(TAG, "Scan Done, files: ${mainViewModel.allMediaInfo.value}")
+                Log.i(TAG, "Scan Done, files: ${mainViewModel.allMediaInfo.value}, timeConsuming: $timeConsuming")
                 if (timeConsuming > -1) {
                     Log.i(TAG, "Scan Complete")
                     Toast.makeText(
@@ -455,10 +466,11 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                         Toast.LENGTH_SHORT
                     ).show()
                     MainScope().launch {
-                        delay(timeConsuming * 3)
+                        delay(2 * 1000)
                         _floatBtnLocal.isEnabled = true
                         if (mainViewModel.allMediaInfo.value?.isNotEmpty() == true) {
                             _swLoop.isChecked = true
+                            isAutoPlay = true
                             mainViewModel.currentPosition = 0
                             mainViewModel.saveLog(
                                 "扫描结束，总计媒体文件数量：" + mainViewModel.allMediaInfo.value?.size
@@ -519,7 +531,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 if (mainViewModel.isExternalStorage) {
                     if (Environment.isExternalStorageManager()) {
                         Log.i(TAG, "isExternalStorageManager")
-                        mainViewModel.initLogFile()
                         startScan()
                     } else {
                         Log.i(TAG, "NOT isExternalStorageManager")
@@ -546,17 +557,12 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
     }
 
     private fun startScan() {
+        mainViewModel.initLogFile()
         Log.i(TAG, "Start Scan Path: ${mainViewModel.usbMessPath}")
-//        if (!File(mainViewModel.usbMessPath).exists()) {
-//            Log.e(TAG, "NO disk")
-//            Toast.makeText(this@MainActivity, "NO USB disk", Toast.LENGTH_SHORT)
-//                .show()
-//            return
-//        }
         _scanFile.stop()
         if (_player.isPlaying) {
             _player.stop()
-//            _player.reset()
+            _player.reset()
         }
         _scanFile.startAsyncScan()
     }
@@ -609,7 +615,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                         "本次测试结束\n" +
                                 "总计测试媒体数量：" + (mainViewModel.allMediaInfo.value?.size ?: 0) + "\n" +
                                 "测试错误数量：" + mainViewModel.playErrorFileSet.size + "\n" +
-                                "测试错误文件列表：" + errorFilePaths
+                                if (errorFilePaths.isNotEmpty()) "测试错误文件列表：$errorFilePaths" else ""
                     )
                     mainViewModel.playErrorFileSet.clear()
                 }
@@ -631,9 +637,9 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                 mainViewModel.saveLog("准备播放: $path")
 
 //                if (mainViewModel.currentMediaInfo.path != null) {
-                val mmr = MediaMetadataRetriever()
                 var durationTime = 0L
-                if (!path.isNullOrEmpty()) {
+                if (!path.isNullOrEmpty() && File(path).exists()) {
+                    val mmr = MediaMetadataRetriever()
                     val inputStream = FileInputStream(File(path).absolutePath)
                     try {
                         mmr.setDataSource(inputStream.fd)
@@ -683,6 +689,7 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                             _playerView.visibility = View.VISIBLE
                             _cover.visibility = View.GONE
                         }
+                        prepareMediaPlayer(Uri.parse(path), durationTime)
                     } catch (e: FileNotFoundException) {
                         e.printStackTrace();
                     } catch (e: IOException) {
@@ -694,7 +701,6 @@ class MainActivity : AppCompatActivity(), MediaListAdapter.onItemClickListener,
                     }
                 }
 
-                prepareMediaPlayer(Uri.parse(path), durationTime)
             } else {
                 Log.i(
                     TAG,

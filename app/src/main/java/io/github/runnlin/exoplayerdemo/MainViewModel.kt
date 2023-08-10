@@ -35,7 +35,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 
     //    val usbMessPath = ScanFileUtil.externalStorageDirectory
 //    val usbMessPath = "content://com.android.externalstorage.documents/document/0E6C-A005:"
-//    val internalPath: String = Environment.getExternalStorageDirectory().path
+    val internalPath: String = Environment.getExternalStorageDirectory().path
     val LOG_FILE_NAME = "DesaysvMediaTesterLog.txt"
 
     var isExternalStorage = false
@@ -59,7 +59,7 @@ class MainViewModel(private val repository: MediaRepository) : ViewModel() {
 //        usbMessPath = Environment.getExternalStorageDirectory().path
         if (isLogEnable)
             return true
-        else if (File(usbMessPath).isDirectory) {
+        else if (isExternalStorage) {
             filePath = "$usbMessPath/$LOG_FILE_NAME"
             logFile = File(filePath)
             if (!logFile.exists() || !logFile.canWrite()) {
